@@ -1,0 +1,23 @@
+{
+  "task_id": "MTC-f850c0",
+  "tenant": "tenant_zero",
+  "priority": 5,
+  "payload": {
+    "action": "maintenance",
+    "target": "kernel.db",
+    "goal": "Monitor DB connection pool health under multi-tenant load."
+  },
+  "created_at": "2026-03-21T08:53:13.778424+00:00",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T08:53:14.082231+00:00",
+  "completed_at": "2026-03-21T08:53:14.082548+00:00",
+  "result": {
+    "status": "ok",
+    "health_check": "All systems nominal.",
+    "active_connections": 4,
+    "_elapsed_ms": 0.219
+  },
+  "error": null
+}

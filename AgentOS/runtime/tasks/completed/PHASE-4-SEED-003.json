@@ -1,0 +1,24 @@
+{
+  "task_id": "PHASE-4-SEED-003",
+  "tenant": "tenant_zero",
+  "priority": 0,
+  "payload": {
+    "action": "expense",
+    "amount": 5000.0,
+    "description": "Project Genesis Infrastructure Bootstrap",
+    "department": "corp"
+  },
+  "created_at": "2026-03-21T09:55:02Z",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T09:53:21.880823+00:00",
+  "completed_at": "2026-03-21T09:53:21.886703+00:00",
+  "result": {
+    "status": "success",
+    "entry_id": null,
+    "date": null,
+    "_elapsed_ms": 5.84
+  },
+  "error": null
+}

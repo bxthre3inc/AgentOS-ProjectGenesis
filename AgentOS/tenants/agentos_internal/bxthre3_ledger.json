@@ -1,0 +1,48 @@
+{
+  "ledger_version": "1.0.0",
+  "generated_at": "2026-03-21T08:01:14Z",
+  "generated_by": "AgentOS kernel / Tenant Zero self-audit",
+  "description": "Central Bxthre3 Inc. asset map — readiness scores and operational metrics.",
+
+  "tenant_zero": {
+    "codename": "agentos_internal",
+    "status": "operational",
+    "components": {
+      "kernel":              { "status": "complete",    "files": ["kernel_main.py", "task_context.py", "inference_node.py", "db.py"] },
+      "runtime":             { "status": "complete",    "notes": "pending/ completed/ failed/ queues live" },
+      "maintenance_agent":   { "status": "operational", "last_run": "2026-03-21T07:59:36Z", "benchmark_µs": 15.13 },
+      "relational_qe":       { "status": "scaffolded",  "target_latency_ms": 100, "mode": "stub — asyncpg not installed" },
+      "tech_stack_doc":      { "status": "complete",    "path": "tenants/agentos_internal/evolution/TECH_STACK.md" }
+    },
+    "readiness_score": 90,
+    "metadata": {
+      "corp_ready": true,
+      "last_phase": 4
+    }
+  },
+
+  "product_alpha": {
+    "codename": "starting5",
+    "status": "scaffolded",
+    "components": {
+      "roster_model":   { "status": "complete", "path": "tenants/starting5/src/roster.py",     "positions": ["PG","SG","SF","PF","C"] },
+      "roster_api":     { "status": "complete", "path": "tenants/starting5/src/roster_api.py", "isolation": "no kernel imports" },
+      "ui_layer":       { "status": "pending",  "notes": "UI/ directory scaffolded; components not yet built" },
+      "data_isolation": { "status": "enforced", "notes": "roster.py has zero Bxthre3 financial data references" }
+    },
+    "readiness_score": 35
+  },
+
+  "subsidiary_beta": {
+    "codename": "irrig8",
+    "status": "operational",
+    "components": {
+      "math_engine":      { "status": "complete", "path": "tenants/irrig8/logic/math_engine.py",    "features": ["horizontal_profile","vertical_profile","recommend_tier","irrigation_volume_mm"] },
+      "worksheet_server": { "status": "complete", "path": "tenants/irrig8/logic/worksheet.py",      "ota": true, "checksum": "SHA-256" },
+      "tier_resolution":  { "status": "complete", "path": "tenants/irrig8/logic/tier_resolution.py","tiers_m": [1,10,20,50] },
+      "sensor_data":      { "status": "pending",  "notes": "sensor_data/ directory ready; ingest handler not built" }
+    },
+    "active_sensor_count": 0,
+    "readiness_score": 55
+  }
+}

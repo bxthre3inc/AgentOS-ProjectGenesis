@@ -1,0 +1,46 @@
+{
+  "task_id": "TCO-2001",
+  "tenant": "product_alpha",
+  "priority": 1,
+  "payload": {
+    "action": "echo",
+    "description": "Scaffold Starting5 UI layer. Create index.html + component stubs in tenants/starting5/ui/. Enforce data isolation: no Bxthre3 financial refs. Output a Roster-picker prototype that calls roster_api.py.",
+    "deliverables": [
+      "tenants/starting5/ui/index.html",
+      "tenants/starting5/ui/components/RosterPicker.js",
+      "tenants/starting5/ui/components/AgentCard.js"
+    ],
+    "constraints": [
+      "zero kernel imports in UI layer",
+      "no Bxthre3 internal data"
+    ]
+  },
+  "created_at": "2026-03-21T08:01:14Z",
+  "tags": [
+    "starting5",
+    "ui",
+    "roster"
+  ],
+  "deadline_at": null,
+  "assigned_agent": "kernel",
+  "started_at": "2026-03-21T08:52:53.812385+00:00",
+  "completed_at": "2026-03-21T08:52:53.816605+00:00",
+  "result": {
+    "status": "ok",
+    "echo": {
+      "action": "echo",
+      "description": "Scaffold Starting5 UI layer. Create index.html + component stubs in tenants/starting5/ui/. Enforce data isolation: no Bxthre3 financial refs. Output a Roster-picker prototype that calls roster_api.py.",
+      "deliverables": [
+        "tenants/starting5/ui/index.html",
+        "tenants/starting5/ui/components/RosterPicker.js",
+        "tenants/starting5/ui/components/AgentCard.js"
+      ],
+      "constraints": [
+        "zero kernel imports in UI layer",
+        "no Bxthre3 internal data"
+      ]
+    },
+    "_elapsed_ms": 0.025
+  },
+  "error": null
+}

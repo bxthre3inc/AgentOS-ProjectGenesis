@@ -1,0 +1,24 @@
+{
+  "worksheet_id": "Irrig8_Worksheet_V1",
+  "version": "1.0.0",
+  "meta": {
+    "project": "Irrig8",
+    "description": "Bayesian prior-based irrigation optimization worksheet."
+  },
+  "bayesian_priors": {
+    "soil_moisture_expected_avg": 35.0,
+    "ndvi_historical_baseline": 0.65,
+    "evapotranspiration_constant": 4.2
+  },
+  "kriging_params": {
+    "model": "spherical",
+    "range_m": 150,
+    "sill": 0.8,
+    "nugget": 0.05
+  },
+  "thresholds": {
+    "irrigation_trigger_pct": 25.0,
+    "overwater_alert_pct": 55.0,
+    "low_ndvi_warning": 0.3
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "manifest_version": "1.0.0",
+  "system": "AgentOS",
+  "generated_at": "2026-03-21T07:52:47Z",
+  "description": "Canonical source of truth for tenant boundaries, agent registry pointers, and runtime paths.",
+
+  "runtime": {
+    "tasks_inbox":    "AgentOS/runtime/tasks/pending",
+    "tasks_completed":"AgentOS/runtime/tasks/completed",
+    "tasks_failed":   "AgentOS/runtime/tasks/failed",
+    "kernel_entry":   "AgentOS/kernel/kernel_main.py",
+    "agent_registry": "AgentOS/agents/agent_manifest.json"
+  },
+
+  "tenants": {
+    "tenant_zero": {
+      "id":          "tenant_zero",
+      "codename":    "agentos_internal",
+      "role":        "Self-improvement staging — AgentOS treats its own source as Client 0.",
+      "path":        "AgentOS/tenants/agentos_internal",
+      "priority":    0,
+      "restricted":  true,
+      "description": "Recursive logs and kernel staging area. No external product code here."
+    },
+    "product_alpha": {
+      "id":          "product_alpha",
+      "codename":    "starting5",
+      "role":        "R&D product target. AgentOS develops it; it is NOT used for internal Bxthre3 ops.",
+      "path":        "AgentOS/tenants/starting5",
+      "priority":    1,
+      "restricted":  false,
+      "description": "Source code, UI assets, and distribution builds for the Starting5 product."
+    },
+    "subsidiary_beta": {
+      "id":          "subsidiary_beta",
+      "codename":    "irrig8",
+      "role":        "Operational Ag-Tech BU (formerly FarmSense) managed by the AgentOS kernel.",
+      "path":        "AgentOS/tenants/irrig8",
+      "priority":    2,
+      "restricted":  false,
+      "description": "Sensor data ingest, field mapping logic, and irrigation actuation workflows."
+    }
+  },
+
+  "constraints": {
+    "fully_self_contained": true,
+    "headless_build":       true,
+    "inference_runtime":    "python3",
+    "min_python_version":   "3.10",
+    "persistence": {
+      "primary_db":   "postgresql://localhost:5432/agentos",
+      "vector_db":    "localhost:6333",
+      "task_store":   "filesystem"
+    }
+  },
+  "corporate": {
+    "organization": "Bxthre3 Inc.",
+    "vision": "Recursive autonomous dominance through multi-tenant synergy.",
+    "departments": ["kernel", "product", "agtech", "corp"],
+    "global_clearance_policy": "Strict compartmentalization. Tiered access L1-L5."
+  }
+}

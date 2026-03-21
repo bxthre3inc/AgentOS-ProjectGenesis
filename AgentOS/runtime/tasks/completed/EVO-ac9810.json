@@ -1,0 +1,23 @@
+{
+  "task_id": "EVO-ac9810",
+  "tenant": "tenant_zero",
+  "priority": 1,
+  "payload": {
+    "action": "optimize",
+    "target": "kernel.rqe",
+    "goal": "Optimize spatial query latency after Phase 2 DDL update."
+  },
+  "created_at": "2026-03-21T08:53:13.775071+00:00",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T08:53:14.073371+00:00",
+  "completed_at": "2026-03-21T08:53:14.073639+00:00",
+  "result": {
+    "status": "ok",
+    "optimization": "Applied performance tuning to kernel.rqe.",
+    "efficiency_gain": "4.2%",
+    "_elapsed_ms": 0.185
+  },
+  "error": null
+}

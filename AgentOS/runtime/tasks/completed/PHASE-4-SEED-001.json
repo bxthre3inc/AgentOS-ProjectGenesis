@@ -1,0 +1,25 @@
+{
+  "task_id": "PHASE-4-SEED-001",
+  "tenant": "tenant_zero",
+  "priority": 0,
+  "payload": {
+    "action": "onboard",
+    "name": "Kernel Architect",
+    "department": "kernel",
+    "role": "L5 Engineer",
+    "clearance": 5
+  },
+  "created_at": "2026-03-21T09:55:00Z",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T09:53:21.853966+00:00",
+  "completed_at": "2026-03-21T09:53:21.855445+00:00",
+  "result": {
+    "status": "success",
+    "emp_id": "None",
+    "joined_at": null,
+    "_elapsed_ms": 0.823
+  },
+  "error": null
+}

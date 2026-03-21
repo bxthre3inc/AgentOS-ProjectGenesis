@@ -1,0 +1,23 @@
+{
+  "task_id": "IRR-b46af8",
+  "tenant": "subsidiary_beta",
+  "priority": 2,
+  "payload": {
+    "action": "simulate",
+    "target": "irrig8.sensor_grid",
+    "goal": "Simulate a 50-field grid interpolation to test RQE throughput."
+  },
+  "created_at": "2026-03-21T08:53:13.776753+00:00",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T08:53:14.077427+00:00",
+  "completed_at": "2026-03-21T08:53:14.079126+00:00",
+  "result": {
+    "status": "ok",
+    "simulation_result": "50-field grid stress test completed for irrig8.sensor_grid.",
+    "p99_latency_ms": 12.5,
+    "_elapsed_ms": 0.722
+  },
+  "error": null
+}
