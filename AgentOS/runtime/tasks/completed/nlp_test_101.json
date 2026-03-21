@@ -1,0 +1,22 @@
+{
+  "task_id": "nlp_test_101",
+  "tenant": "tenant_zero",
+  "priority": 0,
+  "payload": {
+    "prompt": "Hey Ops, we need a budget check for generic_tenant please.",
+    "action": "budget",
+    "department": "generic_tenant"
+  },
+  "created_at": "2026-03-21T00:00:00Z",
+  "tags": [],
+  "deadline_at": null,
+  "assigned_agent": null,
+  "started_at": "2026-03-21T11:31:57.211293+00:00",
+  "completed_at": "2026-03-21T11:31:57.214133+00:00",
+  "result": {
+    "department": "generic_tenant",
+    "total_spent": 0.0,
+    "_elapsed_ms": 1.54
+  },
+  "error": null
+}

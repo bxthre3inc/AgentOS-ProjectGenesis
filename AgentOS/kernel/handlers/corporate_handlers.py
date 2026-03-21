@@ -3,8 +3,8 @@ corporate_handlers.py — Handlers for Bxthre3 corporate operations (HR & Ops)
 """
 import logging
 from task_context import TaskContext
-from agents.hr_agent import HRAgent
-from agents.ops_agent import OpsAgent
+from AgentOS.agents.hr_agent import HRAgent
+from AgentOS.agents.ops_agent import OpsAgent
 
 logger = logging.getLogger("agentos.handlers.corporate")
 

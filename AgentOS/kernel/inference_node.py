@@ -38,8 +38,61 @@ import handlers.reporting_handlers as rep
 import handlers.corporate_handlers as corp
 import db
 
+import re
+import os
+
 logger = logging.getLogger("agentos.inference_node")
 
+try:
+    import openai
+    _OPENAI_AVAILABLE = True
+except ImportError:
+    openai = None
+    _OPENAI_AVAILABLE = False
+
+
+async def infer_intent(prompt: str) -> dict:
+    """
+    Use an LLM (or fallback parser) to convert natural language into a structured AgentOS action payload.
+    """
+    if _OPENAI_AVAILABLE and os.getenv("OPENAI_API_KEY"):
+        try:
+            client = openai.AsyncOpenAI()
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are AgentOS. Extract the action from the user prompt into JSON. Available actions: 'budget', 'expense', 'onboard'. Include args like 'amount', 'department', 'name', 'role'."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            logger.warning("[Inference Node] LLM failed, using fallback regex. Error: %s", e)
+    
+    # Fallback RegEx Parser if no LLM or key is available
+    logger.info("[Inference Node] Using fallback regex parser for prompt: '%s'", prompt)
+    prompt_lower = prompt.lower()
+    
+    if "budget" in prompt_lower or "spent" in prompt_lower:
+        match = re.search(r'(for|in) (\w+)', prompt_lower)
+        dept = match.group(2) if match else "generic_tenant"
+        return {"action": "budget", "department": dept}
+        
+    elif "expense" in prompt_lower or "cost" in prompt_lower:
+        amt_match = re.search(r'\$?(\d+)', prompt_lower)
+        dept_match = re.search(r'(for|in) (\w+)', prompt_lower)
+        return {
+            "action": "expense",
+            "amount": float(amt_match.group(1)) if amt_match else 0.0,
+            "department": dept_match.group(2) if dept_match else "generic_tenant",
+            "description": "Auto-inferred expense"
+        }
+        
+    elif "onboard" in prompt_lower or "hire" in prompt_lower:
+        return {"action": "onboard", "name": "Auto Inferred", "role": "Inferred Role", "department": "generic_tenant"}
+        
+    return {"action": "noop", "message": "Could not infer intent."}
 
 # ---------------------------------------------------------------------------
 # Built-in action handlers
@@ -83,7 +136,17 @@ def process(task: TaskContext) -> dict:
     Dispatch the TCO to the appropriate handler.
     Returns the result dict.  Raises on unrecoverable errors.
     """
-    action = task.payload.get("action", "noop")
+    action = task.payload.get("action")
+    
+    # Enable Natural Language inference if no hardcoded action is provided
+    if not action and "prompt" in task.payload:
+        logger.info("[Inference Node] Invoking LLM intent extraction...")
+        inferred = asyncio.run(infer_intent(task.payload["prompt"]))
+        task.payload.update(inferred)
+        action = task.payload.get("action", "noop")
+    
+    action = action or "noop"
+    
     handler = _HANDLERS.get(action)
     if handler is None:
         raise NotImplementedError(
@@ -108,7 +171,6 @@ def process(task: TaskContext) -> dict:
                 VALUES ($1, $2, $3, $4, $5, $6::jsonb)
                 ON CONFLICT (patch_id) DO NOTHING
             """
-            import asyncio
             asyncio.run(db.execute(
                 sql, task.task_id, result.get("target", "kernel"),
                 task.payload.get("goal"), str(result.get("optimization") or result.get("action")),
