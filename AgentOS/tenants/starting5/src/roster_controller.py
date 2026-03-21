@@ -65,16 +65,16 @@ class A2ABus:
         self._handlers: dict[Position, Callable] = {}
         self._log: list[A2AMessage] = []
 
-    def register(self, position: Position, handler: Callable[[A2AMessage], A2AMessage]) -> None:
+    def register(self, position: Position, handler: Callable) -> None:
         self._handlers[position] = handler
         logger.debug("[A2A] Registered handler for position %s", position)
 
-    def send(self, message: A2AMessage) -> A2AMessage:
+    async def send(self, message: A2AMessage) -> A2AMessage:
         self._log.append(message)
         handler = self._handlers.get(message.to_pos)
         if handler is None:
             raise RuntimeError(f"No handler registered for position '{message.to_pos}'.")
-        reply = handler(message)
+        reply = await handler(message)
         self._log.append(reply)
         return reply
 
@@ -105,7 +105,7 @@ class PointGuard:
         self.bus = bus
         bus.register("PG", self._handle)
 
-    def dispatch(self, goal: str, context: dict | None = None) -> list[A2AMessage]:
+    async def dispatch(self, goal: str, context: dict | None = None) -> list[A2AMessage]:
         """
         Break a goal into sub-tasks and route each to the right position.
         Returns the list of reply messages.
@@ -117,7 +117,7 @@ class PointGuard:
             position = self._route(task["intent"])
             msg = A2AMessage(from_pos="PG", to_pos=position,
                              intent=task["intent"], payload=task)
-            reply = self.bus.send(msg)
+            reply = await self.bus.send(msg)
             replies.append(reply)
         return replies
 
@@ -147,7 +147,7 @@ class PointGuard:
         domain = intent.split(".")[0] if "." in intent else intent
         return self.ROUTING_RULES.get(domain, self.ROUTING_RULES["default"])
 
-    def _handle(self, msg: A2AMessage) -> A2AMessage:
+    async def _handle(self, msg: A2AMessage) -> A2AMessage:
         """PG can also receive replies — logs and acknowledges."""
         logger.info("[PG] Received reply: %s", msg.intent)
         return msg.reply("PG", {"status": "acknowledged"})
@@ -173,7 +173,7 @@ class Center:
         self.bus = bus
         bus.register("C", self._handle)
 
-    def _handle(self, msg: A2AMessage) -> A2AMessage:
+    async def _handle(self, msg: A2AMessage) -> A2AMessage:
         # Sanitise payload — strip any forbidden keys before processing
         clean = {k: v for k, v in msg.payload.items() if k not in _FORBIDDEN_KEYS}
         leaked = set(msg.payload.keys()) & _FORBIDDEN_KEYS
@@ -206,7 +206,7 @@ class ShootingGuard:
         self.bus = bus
         bus.register("SG", self._handle)
 
-    def _handle(self, msg: A2AMessage) -> A2AMessage:
+    async def _handle(self, msg: A2AMessage) -> A2AMessage:
         result = {
             "status": "ok",
             "content": f"Generated content for goal: {msg.payload.get('goal', 'n/a')[:80]}",
@@ -228,7 +228,7 @@ class SmallForward:
         self.bus = bus
         bus.register("SF", self._handle)
 
-    def _handle(self, msg: A2AMessage) -> A2AMessage:
+    async def _handle(self, msg: A2AMessage) -> A2AMessage:
         result = {
             "status": "ok",
             "findings": f"Research results for: {msg.payload.get('goal', 'n/a')[:80]}",
@@ -250,7 +250,7 @@ class PowerForward:
         self.bus = bus
         bus.register("PF", self._handle)
 
-    def _handle(self, msg: A2AMessage) -> A2AMessage:
+    async def _handle(self, msg: A2AMessage) -> A2AMessage:
         result = {
             "status": "ok",
             "analysis": f"Data analysis for: {msg.payload.get('goal', 'n/a')[:80]}",

@@ -5,6 +5,7 @@ Converts sparse point-sensor data from the RQE into a continuous, 1m-resolution
 virtual grid using spatial interpolation (or simple nearest-neighbor).
 """
 
+import asyncio
 import math
 from typing import Any
 from AgentOS.kernel.rqe import RQE
@@ -22,21 +23,30 @@ class VirtualGrid:
 
     async def interpolate_layer(self, layer_name: str, tenant_id: str) -> list[list[float]]:
         """
-        Produce a 2D array of interpolated values for the requested layer.
+        Produce a 2D array of interpolated values for the requested layer concurrently.
         """
         lat_steps = int((self.bounds[1] - self.bounds[0]) / self.resolution)
         lon_steps = int((self.bounds[3] - self.bounds[2]) / self.resolution)
 
-        grid = []
+        async def fetch_point(lat, lon):
+            res = await self.rqe.query(lat, lon, [layer_name], tenant_id)
+            return res.data.get(layer_name, 0.0)
+
+        tasks = []
         for i in range(lat_steps):
-            row = []
             for j in range(lon_steps):
                 lat = self.bounds[0] + i * self.resolution
                 lon = self.bounds[2] + j * self.resolution
-                # Query RQE for nearest point
-                res = await self.rqe.query(lat, lon, [layer_name], tenant_id)
-                row.append(res.data.get(layer_name, 0.0))
-            grid.append(row)
+                tasks.append(fetch_point(lat, lon))
+
+        results = await asyncio.gather(*tasks)
+
+        grid = []
+        idx = 0
+        for i in range(lat_steps):
+            grid.append(list(results[idx:idx + lon_steps]))
+            idx += lon_steps
+
         return grid
 
 if __name__ == "__main__":

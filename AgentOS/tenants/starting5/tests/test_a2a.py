@@ -8,15 +8,16 @@ from pathlib import Path
 root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.append(str(root))
 
+import asyncio
 from AgentOS.tenants.starting5.src.roster_controller import create_default_bus
 
-def test_a2a_flow():
+async def test_a2a_flow():
     print("Testing Starting5 A2A Messaging...")
     bus, pg, c, sg, sf, pf = create_default_bus()
     
     goal = "Calculate ROI for 5000 acres of corn."
     print(f"Dispatching goal: {goal}")
-    replies = pg.dispatch(goal)
+    replies = await pg.dispatch(goal)
     
     for r in replies:
         print(f"Reply from {r.from_pos}: {r.payload.get('summary')}")
@@ -27,4 +28,4 @@ def test_a2a_flow():
     print("✓ A2A flow test passed")
 
 if __name__ == "__main__":
-    test_a2a_flow()
+    asyncio.run(test_a2a_flow())
