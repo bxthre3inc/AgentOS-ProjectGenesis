@@ -1,0 +1,14 @@
+{
+  "mcp_server": {
+    "name": "antigravity-3way-mesh",
+    "command": "python3",
+    "args": [
+      "/home/bxthre3/Desktop/Zo & Antigravity 2-Way Workspace Sync/main.py",
+      "mesh"
+    ],
+    "env": {
+      "PYTHONPATH": "/home/bxthre3/Desktop/Zo & Antigravity 2-Way Workspace Sync",
+      "ANTIGRAVITY_IDE_PORT": "7881"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "agent_id": "antigravity",
+  "display_name": "Antigravity",
+  "platform": "gemini-cli",
+  "mcp": {
+    "server_url": "http://localhost:7878",
+    "transport": "http",
+    "connect_on_start": true
+  },
+  "workspace_path": "agents/antigravity/workspace",
+  "capabilities": ["read", "write", "execute", "admin"],
+  "extensions": [],
+  "preferences": {
+    "auto_sync": true,
+    "notify_on_command": true
+  }
+}

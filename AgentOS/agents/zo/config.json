@@ -1,0 +1,18 @@
+{
+  "agent_id": "zo",
+  "display_name": "Zo",
+  "platform": "zo.computer",
+  "plan": "basic",
+  "mcp": {
+    "server_url": "http://localhost:7878",
+    "transport": "http",
+    "connect_on_start": true
+  },
+  "workspace_path": "agents/zo/workspace",
+  "capabilities": ["read", "write", "execute"],
+  "extensions": [],
+  "preferences": {
+    "auto_sync": true,
+    "notify_on_command": true
+  }
+}

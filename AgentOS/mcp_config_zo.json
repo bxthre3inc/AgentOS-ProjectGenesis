@@ -1,0 +1,24 @@
+{
+  "name": "Zo ↔ Antigravity ↔ AgentOS 3-Way Mesh",
+  "description": "Full-mesh MCP bridge for Zo.Computer, Antigravity IDE, and AgentOS. Connects to the local sync engine.",
+  "transport": "stdio",
+  "command": "python3",
+  "args": [
+    "/home/bxthre3/Desktop/Zo & Antigravity 2-Way Workspace Sync/main.py",
+    "mcp"
+  ],
+  "tools": [
+    "ping", "sync_resource", "read_resource", "list_workspace",
+    "set_secret", "get_secret", "list_secrets",
+    "toggle_feature", "list_features",
+    "issue_command", "poll_commands",
+    "send_message", "get_messages",
+    "list_extensions", "toggle_extension",
+    "get_actions_log",
+    "register_peer", "get_peers", "get_session", "call_peer_tool",
+    "agentos_invoke_agent", "agentos_assign_task", "agentos_query_memory", "agentos_war_room",
+    "ide_open_file", "ide_edit_file", "ide_run_terminal", "ide_get_diagnostics"
+  ]
+}  "get_events"
+  ]
+}

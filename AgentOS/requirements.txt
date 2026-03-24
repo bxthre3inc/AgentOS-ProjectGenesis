@@ -1,0 +1,8 @@
+mcp
+fastapi
+uvicorn
+watchdog
+aiosqlite
+cryptography
+websockets
+httpx
