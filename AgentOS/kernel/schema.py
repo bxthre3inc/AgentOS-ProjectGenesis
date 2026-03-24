@@ -127,24 +127,29 @@ async def apply(pool: Any = None) -> None:
 # ---------------------------------------------------------------------------
 # Seed helpers (used by tests and the developer sandbox)
 # ---------------------------------------------------------------------------
-async def seed_product_roadmap(pool: Any, product: str, features: list[dict]) -> None:
-    """Upsert a list of features into product_roadmap."""
+async def seed_product_roadmap(product: str, features: list[dict]) -> None:
+    """Upsert a list of features into product_roadmap using SQLite."""
+    import aiosqlite
+    import json
+    import os
+    _DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime", "agentos.db")
+    
     sql = """
         INSERT INTO product_roadmap (product, feature_id, feature_name, status, readiness_score, meta)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (product, feature_id) DO UPDATE
             SET status = EXCLUDED.status,
                 readiness_score = EXCLUDED.readiness_score,
-                updated_at = NOW()
+                updated_at = CURRENT_TIMESTAMP
     """
-    import json
-    async with pool.acquire() as conn:
+    async with aiosqlite.connect(_DB_PATH) as db:
         for f in features:
-            await conn.execute(
-                sql, product, f["feature_id"], f["feature_name"],
+            await db.execute(
+                sql, (product, f["feature_id"], f["feature_name"],
                 f.get("status", "pending"), f.get("readiness_score", 0),
-                json.dumps(f.get("meta", {})),
+                json.dumps(f.get("meta", {})))
             )
+        await db.commit()
     logger.info("[schema] Seeded %d features for product '%s'.", len(features), product)
 
 
