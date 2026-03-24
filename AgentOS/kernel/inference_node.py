@@ -58,7 +58,8 @@ async def infer_intent(prompt: str) -> dict:
     api_key   = os.getenv("OPENAI_API_KEY", "standalone-agentos")
     # For standalone, we prioritize local Ollama or similar proxy
     base_url  = os.getenv("AGENTOS_LLM_URL", "http://localhost:11434/v1")
-    model_id  = os.getenv("AGENTOS_LLM_MODEL", "llama3")
+    # Recommended for Foxxd S67 / 8GB RAM: 'phi3', 'stablelm-zephyr', 'tinyllama'
+    model_id  = os.getenv("AGENTOS_LLM_MODEL", "phi3")
     
     if _OPENAI_AVAILABLE:
         try:

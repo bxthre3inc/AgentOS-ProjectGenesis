@@ -17,6 +17,10 @@ WATCH_DIRS = ["shared", "agents"]
 IGNORE_PATTERNS = {".tmp", ".DS_Store", "__pycache__", ".pyc", "state.db",
                    "secrets.enc", ".salt", ".swp"}
 
+# Battery Saver for Foxxd S67 / Mobile
+BATTERY_SAVER_MODE = os.getenv("AGENTOS_BATTERY_SAVER", "false").lower() == "true"
+POLL_INTERVAL = int(os.getenv("AGENTOS_POLL_INTERVAL", "60"))
+
 _ws_broadcast: Optional[Callable] = None  # injected by API at startup
 
 
@@ -112,6 +116,12 @@ _observer: Optional[Observer] = None
 
 def start_watcher(loop: asyncio.AbstractEventLoop):
     global _observer
+    
+    if BATTERY_SAVER_MODE:
+        print(f"🔋 Battery Saver Active: Polling mesh every {POLL_INTERVAL}s")
+        asyncio.run_coroutine_threadsafe(_poll_loop(), loop)
+        return None
+
     handler = SyncEventHandler(loop)
     _observer = Observer()
     for watch_dir in WATCH_DIRS:
@@ -120,6 +130,17 @@ def start_watcher(loop: asyncio.AbstractEventLoop):
         _observer.schedule(handler, abs_dir, recursive=True)
     _observer.start()
     return _observer
+
+async def _poll_loop():
+    """Low-power periodic scan for standalone mobile devices."""
+    last_snap = {}
+    while True:
+        await asyncio.sleep(POLL_INTERVAL)
+        snap = snapshot_workspace()
+        for path, info in snap.items():
+            if path not in last_snap or last_snap[path]["checksum"] != info["checksum"]:
+                await broadcast_event({"kind": "modified", "path": path, "source": "polling"})
+        last_snap = snap
 
 
 def stop_watcher():
