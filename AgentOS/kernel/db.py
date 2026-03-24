@@ -62,19 +62,14 @@ LATENCY_TARGET_MS = 100.0
 
 
 async def init_pool() -> None:
-    """Call once at kernel startup."""
+    """Initialize SQLite connection for standalone mode."""
     global _pool
-    if not _PG_AVAILABLE:
-        logger.info("[DB] Stub mode — pool not created.")
+    if not _SQLITE_AVAILABLE:
+        logger.info("[DB] Stub mode — connection not initialized.")
         return
-    _pool = await asyncpg.create_pool(
-        dsn=_DSN,
-        min_size=_POOL_MIN,
-        max_size=_POOL_MAX,
-        command_timeout=LATENCY_TARGET_MS / 1000,   # hard per-query timeout
-        statement_cache_size=100,
-    )
-    logger.info("[DB] Pool ready (%d–%d conns) → %s", _POOL_MIN, _POOL_MAX, _DSN)
+    # For SQLite, we don't need a heavy pool, but we'll ensure runtime/ exists
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+    logger.info("[DB] SQLite Ready (Galaxy Profile) → %s", _DB_PATH)
 
 
 async def close_pool() -> None:
@@ -204,16 +199,12 @@ CREATE INDEX IF NOT EXISTS idx_tasks_tenant_status
 from AgentOS.kernel import schema
 
 async def migrate() -> None:
-    """Apply schema DDL.  Safe to call on every startup."""
-    if not _PG_AVAILABLE or _pool is None:
+    """Apply schema DDL. Safe to call on every startup."""
+    if not _SQLITE_AVAILABLE:
         logger.info("[DB MIGRATE] Stub mode — skipping DDL.")
         return
     
-    # Apply core tasks table
-    async with _pool.acquire() as conn:
-        await conn.execute(_DDL)
+    # Initialize schema using the new master ledger helper
+    await schema.apply()
     
-    # Apply corporate and subsidiary schema
-    await schema.apply(_pool)
-    
-    logger.info("[DB MIGRATE] Schema up to date (Core + Corporate).")
+    logger.info("[DB MIGRATE] SQLite Schema up to date (Galaxy Profile).")

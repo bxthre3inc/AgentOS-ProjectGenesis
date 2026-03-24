@@ -40,6 +40,7 @@ import db
 
 import re
 import os
+import psutil # Add to requirements.txt if not present
 
 logger = logging.getLogger("agentos.inference_node")
 
@@ -60,6 +61,15 @@ async def infer_intent(prompt: str) -> dict:
     base_url  = os.getenv("AGENTOS_LLM_URL", "http://localhost:11434/v1")
     # Recommended for Foxxd S67 / 8GB RAM: 'phi3', 'stablelm-zephyr', 'tinyllama'
     model_id  = os.getenv("AGENTOS_LLM_MODEL", "phi3")
+
+    # Galaxy Laptop Optimization: Check Available RAM
+    mem = psutil.virtual_memory()
+    available_gb = mem.available / (1024**3)
+    
+    if available_gb < 1.0:
+        logger.warning("[Galaxy Profile] Low Memory Detected (%.2f GB). Defaulting to Remote Inference.", available_gb)
+        base_url = os.getenv("AGENTOS_REMOTE_LLM_URL", "https://api.openai.com/v1") # Or Zo Hub
+        # Switch to a remote key if available
     
     if _OPENAI_AVAILABLE:
         try:
