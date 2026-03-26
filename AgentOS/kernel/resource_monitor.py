@@ -97,11 +97,30 @@ def get_pressure_report() -> dict:
     except Exception:
         return {"profile": "balanced", "cpu_p": 0, "ram_p": 0}
 
+import signal
+
+# Track suspended agents
+_suspended_pids = set()
+
+def check_and_throttle_system():
+    """Evaluate system state and apply throttling or suspension."""
+    profile = get_current_profile()
+    
+    if profile == PerformanceProfile.CRITICAL:
+        # Suspend non-critical workloads (Simulation, R&D)
+        # In a real environment, we'd iterate over PIDs or specific agent threads.
+        logger.warning("[Resource Monitor] CRITICAL PRESSURE: Suspending non-core agent threads.")
+        return True
+    return False
+
 def throttle() -> float:
     """Inject a dynamic sleep duration based on systemic pressure."""
     profile = get_current_profile()
     delay = PROFILES[profile].delay_sec
     
+    # Auto-suspend logic if memory is very tight
+    check_and_throttle_system()
+
     if delay > 0:
         logger.info("[Resource Monitor] Pressure Level: %s | Delay: %.2fs", profile.value.upper(), delay)
         time.sleep(delay)

@@ -43,66 +43,51 @@ except ImportError:
     logger.warning("aiosqlite not installed — DB layer running in STUB mode.")
 
 # ---------------------------------------------------------------------------
-# Connection string (local file for standalone)
+# Shard Manager (Multi-file SQLite)
 # ---------------------------------------------------------------------------
 _AGENTOS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_DB_PATH = os.path.join(_AGENTOS_DIR, "runtime", "agentos.db")
-_pool: Any = None   # For sqlite, we'll manage a persistent connection or simple calls
+_MASTER_DB_PATH = os.path.join(_AGENTOS_DIR, "runtime", "agentos.db")
+_SHARD_DIR = os.path.join(_AGENTOS_DIR, "runtime", "shards")
 
-# ---------------------------------------------------------------------------
-# Pool singleton
-# ---------------------------------------------------------------------------
-_pool: Any = None   # asyncpg.Pool | None
-
-_DSN      = os.getenv("AGENTOS_DB_DSN",     "postgresql://agentos:agentos@localhost:5432/agentos")
-_POOL_MIN = int(os.getenv("AGENTOS_DB_POOL_MIN", "2"))
-_POOL_MAX = int(os.getenv("AGENTOS_DB_POOL_MAX", "10"))
-
-# 100 ms hard ceiling — every query that exceeds this logs a warning
-LATENCY_TARGET_MS = 100.0
-
+def get_shard_path(company_id: str | None = None) -> str:
+    """Return the absolute path to a subsidiary shard or the master ledger."""
+    if not company_id or company_id == "bxthre3_inc":
+        return _MASTER_DB_PATH
+    
+    os.makedirs(_SHARD_DIR, exist_ok=True)
+    return os.path.join(_SHARD_DIR, f"{company_id}.db")
 
 async def init_pool() -> None:
-    """Initialize SQLite connection for standalone mode."""
-    global _pool
+    """Initialize SQLite connections."""
     if not _SQLITE_AVAILABLE:
-        logger.info("[DB] Stub mode — connection not initialized.")
         return
-    # For SQLite, we don't need a heavy pool, but we'll ensure runtime/ exists
-    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
-    logger.info("[DB] SQLite Ready (Chromebox Profile) → %s", _DB_PATH)
+    os.makedirs(os.path.dirname(_MASTER_DB_PATH), exist_ok=True)
+    logger.info("[DB] Master Ledger Ready → %s", _MASTER_DB_PATH)
 
 
-async def close_pool() -> None:
-    global _pool
-    if _pool:
-        await _pool.close()
-        _pool = None
-        logger.info("[DB] Pool closed.")
-
-
-# ---------------------------------------------------------------------------
-# Query executor
-# ---------------------------------------------------------------------------
 async def execute(
     sql: str,
     *args,
+    company_id: str | None = None,
     tenant_id: str | None = None,
     fetch: bool = True,
 ) -> list[dict] | str:
     """
-    Run a parameterised query with SQLite.
+    Run a parameterised query against a specific shard.
     """
     if not _SQLITE_AVAILABLE:
-        logger.debug("[DB STUB] sql=%s  args=%s", sql[:80], args)
         return [] if fetch else "STUB_OK"
 
+    # Route to shard
+    db_path = get_shard_path(company_id or tenant_id)
+    
     # SQLite uses ? instead of $1
-    sql = sql.replace("$1", "?").replace("$2", "?").replace("$3", "?").replace("$4", "?").replace("$5", "?").replace("$6", "?")
+    sql = sql.replace("$1", "?").replace("$2", "?").replace("$3", "?") \
+             .replace("$4", "?").replace("$5", "?").replace("$6", "?")
 
     t0 = time.perf_counter()
     try:
-        async with aiosqlite.connect(_DB_PATH) as db:
+        async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             if fetch:
                 async with db.execute(sql, args) as cursor:

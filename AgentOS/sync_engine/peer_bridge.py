@@ -170,8 +170,23 @@ async def call_peer_tool(target_agent: str, tool_name: str,
 
     headers = {
         "Content-Type": "application/json",
-        "X-Correlation-ID": trace_id
+        "X-Correlation-ID": trace_id,
+        "X-Timestamp": str(int(time.time())),
+        "X-Nonce": f"nonce-{uuid.uuid4().hex[:8]}"
     }
+
+    # Generate HMAC Signature
+    mesh_key_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "secrets", ".vault", "mesh.key")
+    if os.path.exists(mesh_key_path):
+        import hmac
+        import hashlib
+        with open(mesh_key_path, 'r') as f:
+            key = f.read().strip().encode()
+        
+        payload_str = f"{headers['X-Timestamp']}{headers['X-Nonce']}{json.dumps(arguments)}"
+        signature = hmac.new(key, payload_str.encode(), hashlib.sha256).hexdigest()
+        headers["X-Signature"] = signature
+
     if api_key:
         headers["X-API-Key"] = api_key
 

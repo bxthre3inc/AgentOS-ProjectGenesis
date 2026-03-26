@@ -43,6 +43,20 @@ class SecureData:
         except Exception:
             return token # Return as is if decryption fails (likely plaintext)
 
+    @classmethod
+    def encrypt_data(cls, data: Any) -> str:
+        """Utility to JSON-dump and encrypt any data structure."""
+        return cls.encrypt(json.dumps(data))
+
+    @classmethod
+    def decrypt_data(cls, token: str) -> Any:
+        """Utility to decrypt and JSON-load any data structure."""
+        raw = cls.decrypt(token)
+        try:
+            return json.loads(raw)
+        except Exception:
+            return raw
+
 async def get_db() -> aiosqlite.Connection:
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
@@ -197,10 +211,25 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS companies (
                 company_id      TEXT PRIMARY KEY,
                 name            TEXT NOT NULL,
-                lifecycle_state TEXT DEFAULT 'INCUBATING', -- INCUBATING | AUTONOMOUS | HOLDING
+                lifecycle_state TEXT DEFAULT 'BLUE_OCEAN', -- BLUE_OCEAN | IDEA | VALIDATION | PROJECT | DIVISION | SUBSIDIARY | EXIT
                 parent_id       TEXT DEFAULT 'bxthre3_inc',
                 ceo_entity_id   TEXT, -- Can be Human or Agent
                 created_at      TEXT DEFAULT (datetime('now'))
+            );
+
+            -- THE IDEA PIPELINE (BLUE OCEAN INTAKE)
+            CREATE TABLE IF NOT EXISTS blue_ocean_seeds (
+                seed_id          TEXT PRIMARY KEY,
+                title            TEXT NOT NULL,
+                description      TEXT,
+                pipeline_source  TEXT NOT NULL, -- CHAIRMAN | BLUE_OCEAN_TEAM
+                core_fit         REAL DEFAULT 0.0,
+                impl_cost        REAL DEFAULT 0.0,
+                scalability      REAL DEFAULT 0.0,
+                strat_divergence REAL DEFAULT 0.0,
+                overall_rating   REAL DEFAULT 0.0,
+                status           TEXT DEFAULT 'pending', -- pending | triaged | rejected | promoted
+                created_at       TEXT DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS entities (
@@ -259,6 +288,7 @@ async def init_db():
 
 async def log_event(event_type: str, source: str, target: Optional[str] = None,
                     path: Optional[str] = None, payload: Optional[Any] = None):
+    # Encrypt payload if sensitive
     encrypted_payload = SecureData.encrypt(json.dumps(payload)) if payload else None
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
@@ -267,9 +297,38 @@ async def log_event(event_type: str, source: str, target: Optional[str] = None,
         )
         await db.commit()
 
+async def post_hierarchical_message(company_id: str, sender_id: str, receiver_id: str, content: str):
+    """Securely log a message in the Master Ledger."""
+    encrypted_content = SecureData.encrypt(content)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO messages (company_id, sender_id, receiver_id, content)
+            VALUES (?, ?, ?, ?)
+        """, (company_id, sender_id, receiver_id, encrypted_content))
+        await db.commit()
 
-async def update_agent_session(agent_id: str, status: str, display_name: str = "",
-                                mcp_session_id: str = "", capabilities: list = None):
+
+async def hire_employee(entity_id: str, tier: str, department: str, tenant: str, skills: list):
+    """Securely hire a new workforce member."""
+    encrypted_skills = SecureData.encrypt_data(skills)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO workforce (entity_id, tier, department, tenant, skills)
+            VALUES (?, ?, ?, ?, ?)
+        """, (entity_id, tier, department, tenant, encrypted_skills))
+        await db.commit()
+
+async def create_invoice(invoice_id: str, company_id: str, entity_id: str, amount: float, currency: str = "USD"):
+    """Log an invoice securely."""
+    # We encrypt the amount and entity_id for absolute privacy at rest
+    enc_amount = SecureData.encrypt(str(amount))
+    enc_entity = SecureData.encrypt(entity_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO invoices (invoice_id, company_id, entity_id, amount, currency)
+            VALUES (?, ?, ?, ?, ?)
+        """, (invoice_id, company_id, enc_entity, enc_amount, currency))
+        await db.commit()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             INSERT INTO agent_sessions (agent_id, display_name, status, last_seen, mcp_session_id, capabilities)

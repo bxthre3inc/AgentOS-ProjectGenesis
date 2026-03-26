@@ -29,9 +29,24 @@ CREATE TABLE IF NOT EXISTS workforce (
 CREATE TABLE IF NOT EXISTS companies (
     company_id      TEXT PRIMARY KEY,
     name            TEXT NOT NULL,
-    lifecycle_state TEXT DEFAULT 'IDEA', -- IDEA | VALIDATION | PROJECT | DIVISION | SUBSIDIARY | EXIT
+    lifecycle_state TEXT DEFAULT 'BLUE_OCEAN', -- BLUE_OCEAN | IDEA | VALIDATION | PROJECT | DIVISION | SUBSIDIARY | EXIT
     parent_id       TEXT DEFAULT 'bxthre3_inc',
     created_at      TEXT DEFAULT (datetime('now'))
+);
+
+-- THE IDEA PIPELINE (BLUE OCEAN INTAKE)
+CREATE TABLE IF NOT EXISTS blue_ocean_seeds (
+    seed_id          TEXT PRIMARY KEY,
+    title            TEXT NOT NULL,
+    description      TEXT,
+    pipeline_source  TEXT NOT NULL, -- CHAIRMAN | BLUE_OCEAN_TEAM
+    core_fit         REAL DEFAULT 0.0,
+    impl_cost        REAL DEFAULT 0.0,
+    scalability      REAL DEFAULT 0.0,
+    strat_divergence REAL DEFAULT 0.0,
+    overall_rating   REAL DEFAULT 0.0,
+    status           TEXT DEFAULT 'pending', -- pending | triaged | rejected | promoted
+    created_at       TEXT DEFAULT (datetime('now'))
 );
 
 -- NATIVE CAPABILITY SUITE (BOARDS & DOCS)

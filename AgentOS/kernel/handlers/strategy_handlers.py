@@ -1,9 +1,12 @@
-"""
-strategy_handlers.py — AgentOS Strategic Orchestration
-Handles milestone decomposition and autonomous pivoting.
-"""
-import json
+import sys
+import os
 import logging
+import json
+import time
+
+# Add kernel to path
+_KERNEL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(_KERNEL_DIR)
 import db
 from task_context import TaskContext
 
@@ -68,3 +71,60 @@ async def handle_pivot(task: TaskContext) -> dict:
         await conn.commit()
 
     return {"status": "ok", "message": f"Pivot executed for {company_id}. Pending tasks archived."}
+from . import rating_engine
+from . import provisioner
+
+async def handle_idea_intake(task: TaskContext) -> dict:
+    """Process a new idea seed into the Blue Ocean seeds table."""
+    title = task.payload.get("title")
+    description = task.payload.get("description", "")
+    source = task.payload.get("pipeline_source", "BLUE_OCEAN_TEAM") # CHAIRMAN | BLUE_OCEAN_TEAM
+    
+    if not title:
+        return {"status": "error", "message": "title is required"}
+
+    # Dynamic Rating (Audit)
+    audit_res = await rating_engine.audit_seed(title, description)
+
+    async with await db.get_db() as conn:
+        seed_id = f"SEED-{int(time.time())}"
+        m = audit_res["metrics"]
+        
+        await conn.execute("""
+            INSERT INTO blue_ocean_seeds 
+            (seed_id, title, description, pipeline_source, core_fit, impl_cost, scalability, strat_divergence, overall_rating, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (seed_id, title, description, source, m["core_fit"], m["impl_cost"], m["scalability"], m["strat_divergence"], audit_res["overall"], audit_res["verdict"]))
+        
+        await conn.commit()
+        
+    return {
+        "status": "ok", 
+        "seed_id": seed_id, 
+        "audit": audit_res,
+        "message": f"Idea seeded in {source} pipeline with overall rating {audit_res['overall']}."
+    }
+
+async def handle_lifecycle_transition(task: TaskContext) -> dict:
+    """Progress a company through the 6-stage lifecycle."""
+    company_id = task.payload.get("company_id")
+    new_state = task.payload.get("new_state")
+    name = task.payload.get("name", "New Subsidiary")
+    
+    VALID_STATES = ["BLUE_OCEAN", "IDEA", "VALIDATION", "PROJECT", "DIVISION", "SUBSIDIARY", "EXIT"]
+    if new_state not in VALID_STATES:
+        return {"status": "error", "message": f"Invalid state. Must be one of {VALID_STATES}"}
+
+    async with await db.get_db() as conn:
+        await conn.execute(
+            "UPDATE companies SET lifecycle_state = ? WHERE company_id = ?",
+            (new_state, company_id)
+        )
+        await conn.commit()
+        
+    # If moving to SUBSIDIARY, trigger autonomous provisioner
+    if new_state == "SUBSIDIARY":
+        prov_res = await provisioner.provision_subsidiary(company_id, name)
+        return {"status": "ok", "new_state": new_state, "provisioning": prov_res}
+
+    return {"status": "ok", "new_state": new_state}

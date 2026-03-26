@@ -47,7 +47,8 @@ import os
 import psutil # Add to requirements.txt if not present
 import resource_monitor
 from resource_monitor import PerformanceProfile
-import sys
+import ctc_engine
+
 # Link to peer bridge for mesh-wide status
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "sync_engine"))
 try:
@@ -86,6 +87,16 @@ async def infer_intent(prompt: str) -> dict:
         
         base_url = os.getenv("AGENTOS_REMOTE_LLM_URL", "https://api.openai.com/v1")
     
+    # 0. Select Model based on Resource Pressure
+    profile = resource_monitor.get_current_profile()
+    if profile in [PerformanceProfile.TURBO, PerformanceProfile.HIGH]:
+        model_id = os.getenv("AGENTOS_LLM_MODEL", "phi3")
+    elif profile == PerformanceProfile.BALANCED:
+        model_id = "phi2" # Faster/Smaller fallback
+    else:
+        model_id = "tinyllama" # Minimal fallback
+        logger.info("[Inference Node] Switching to tinyllama due to resource pressure (%s)", profile.value)
+
     if _OPENAI_AVAILABLE:
         try:
             # Assign system prompt based on agent's role
@@ -106,7 +117,12 @@ async def infer_intent(prompt: str) -> dict:
                 ],
                 response_format={"type": "json_object"}
             )
-            return {**json.loads(response.choices[0].message.content), "_origin": "cloud" if mesh_saturated or profile in resource_monitor.REMOTE_INFERENCE_REQUIRED else "local"}
+            raw_res = json.loads(response.choices[0].message.content)
+            
+            # Inject CTC Mandate
+            ctc_res = ctc_engine.inject_ctc_header(raw_res, prompt)
+            
+            return {**ctc_res, "_origin": "cloud" if mesh_saturated or profile in resource_monitor.REMOTE_INFERENCE_REQUIRED else "local"}
         except Exception as e:
             logger.warning("[Inference Node] LLM failed at %s, using fallback regex. Error: %s", base_url, e)
     
@@ -170,6 +186,14 @@ _HANDLERS: dict[str, callable] = {
     "hire":          lambda t: asyncio.run(work.handle_hire(t)),
     "delegate":      lambda t: asyncio.run(work.handle_delegate(t)),
     "message":       lambda t: asyncio.run(work.handle_message(t)),
+
+    # Strategy & Lifecycle
+    "idea_intake":   lambda t: asyncio.run(strategy.handle_idea_intake(t)),
+    "transition":    lambda t: asyncio.run(strategy.handle_lifecycle_transition(t)),
+    "milestone_sync": lambda t: asyncio.run(strategy.handle_milestone_sync(t)),
+    "pivot":         lambda t: asyncio.run(strategy.handle_pivot(t)),
+    "provision":     lambda t: asyncio.run(corp.handle_provision(t)),
+    "rate_seed":     lambda t: asyncio.run(strategy.handle_rate_seed(t)),
 }
 
 
