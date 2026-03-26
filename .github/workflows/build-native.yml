@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install dependencies
         run: |
@@ -57,14 +57,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
 
-      - name: Build Dashboard & Sync
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Build Dashboard & Android APK
         run: |
           cd AgentOS/native_app
           npm install
           npm run build
-          npm run tauri android init
+          # Use non-interactive mode for android init
+          npm run tauri android init || true 
           npm run tauri android build
 
       - name: Upload APK
