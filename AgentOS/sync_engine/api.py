@@ -296,6 +296,11 @@ async def startup():
     await database.init_db()
     loop = asyncio.get_event_loop()
     core.start_watcher(loop)
+    
+    # SHARDING: Start mesh heartbeat
+    from . import peer_bridge
+    asyncio.create_task(peer_bridge.heartbeat_loop("agentos"))
+    
     alog.record("server_start", "system", alog.CAT_SYSTEM,
                 detail={"mode": "dashboard", "port": 7880})
 

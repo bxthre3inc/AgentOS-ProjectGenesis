@@ -45,6 +45,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Connection string (local file for standalone)
 # ---------------------------------------------------------------------------
+_AGENTOS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DB_PATH = os.path.join(_AGENTOS_DIR, "runtime", "agentos.db")
 _pool: Any = None   # For sqlite, we'll manage a persistent connection or simple calls
 
@@ -69,7 +70,7 @@ async def init_pool() -> None:
         return
     # For SQLite, we don't need a heavy pool, but we'll ensure runtime/ exists
     os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
-    logger.info("[DB] SQLite Ready (Galaxy Profile) → %s", _DB_PATH)
+    logger.info("[DB] SQLite Ready (Chromebox Profile) → %s", _DB_PATH)
 
 
 async def close_pool() -> None:
@@ -207,4 +208,4 @@ async def migrate() -> None:
     # Initialize schema using the new master ledger helper
     await schema.apply()
     
-    logger.info("[DB MIGRATE] SQLite Schema up to date (Galaxy Profile).")
+    logger.info("[DB MIGRATE] SQLite Schema up to date (Chromebox Profile).")

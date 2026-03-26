@@ -10,7 +10,9 @@ import sys
 import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# Ensure both the current dir and its parent are in path for flexible execution
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(ROOT))
 
 
 from sync_engine.mcp_server import run_mcp
@@ -43,7 +45,7 @@ def run_mesh():
     print("\n\033[1;35m Zo ↔ Antigravity ↔ AgentOS 3-Way Mesh starting...\033[0m")
     
     # Initialize Standalone DB
-    print("\033[34m[0/4] Initializing AgentOS Master Ledger (SQLite)...\033[0m")
+    print("\033[34m[0/4] Initializing AgentOS Master Ledger (Chromebox Profile)...\033[0m")
     asyncio.run(schema.apply())
 
     print("\033[34m[1/4] Launching Sync Engine Dashboard on :7880...\033[0m")
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "mcp":
-        run_mcp()
+        asyncio.run(run_mcp())
     elif args.mode == "both":
         run_both()
     elif args.mode == "mesh":

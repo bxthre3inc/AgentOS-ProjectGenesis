@@ -80,6 +80,27 @@ def process_all(dry_run: bool = False) -> int:
                 continue
 
             logger.info("Processing task %s …", task.task_id)
+            
+            # Identify current system state
+            import resource_monitor
+            from resource_monitor import PerformanceProfile
+            profile = resource_monitor.get_current_profile()
+            
+            # 1. PEER DELEGATION (Priority): If under pressure, attempt to shard to mesh first
+            if profile in [PerformanceProfile.LOW, PerformanceProfile.CRITICAL]:
+                from sync_engine import peer_bridge
+                # Attempt to delegate - if successful, skip local processing entirely
+                delegated = asyncio.run(peer_bridge.delegate_task(task.to_dict(), caller="agentos"))
+                if delegated:
+                    logger.info("[AgentOS] Task %s sharded to mesh. Skipping local delay and execution.", task.task_id)
+                    path.unlink(missing_ok=True)
+                    success += 1
+                    continue
+
+            # 2. LOCAL THROTTLING (Fallback): Only slow down if delegation was skipped or failed
+            resource_monitor.throttle()
+            
+            # 3. LOCAL INTELLIGENCE: Local node handles it (using dynamic LLM routing if needed)
             inference_node.process(task)
 
             # Remove from inbox after successful processing

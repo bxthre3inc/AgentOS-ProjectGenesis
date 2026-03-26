@@ -35,7 +35,8 @@ def register_peer(agent_id: str, mcp_server_url: str,
         "api_key": api_key,
         "registered_at": time.time(),
         "last_seen": time.time(),
-        "status": "online"
+        "status": "online",
+        "pressure": {} # Real-time health report
     }
     _peers[agent_id] = peer
     _save_registry()
@@ -53,10 +54,12 @@ def unregister_peer(agent_id: str) -> bool:
     return False
 
 
-def heartbeat(agent_id: str) -> bool:
+def heartbeat(agent_id: str, pressure_report: dict = None) -> bool:
     if agent_id in _peers:
         _peers[agent_id]["last_seen"] = time.time()
         _peers[agent_id]["status"] = "online"
+        if pressure_report:
+            _peers[agent_id]["pressure"] = pressure_report
         _save_registry()
         return True
     return False
@@ -65,6 +68,33 @@ def heartbeat(agent_id: str) -> bool:
 def get_peers() -> list[dict]:
     _prune_stale()
     return list(_peers.values())
+
+
+def get_healthiest_peer(exclude_agent: str = "") -> Optional[str]:
+    """Return the ID of the peer with the lowest resource pressure."""
+    _prune_stale()
+    candidates = []
+    
+    # Priority rank for profiles
+    rank = {"turbo": 4, "performance": 3, "balanced": 2, "low": 1, "economy": 0}
+    
+    for aid, p in _peers.items():
+        if aid == exclude_agent or p.get("status") != "online":
+            continue
+        
+        pressure = p.get("pressure", {})
+        profile = pressure.get("profile", "balanced")
+        
+        # We only delegate to nodes that are at least BALANCED
+        if rank.get(profile, 0) >= 2:
+            candidates.append((rank.get(profile, 0), pressure.get("cpu_p", 100), aid))
+            
+    if not candidates:
+        return None
+        
+    # Sort by rank (desc) then CPU (asc)
+    candidates.sort(key=lambda x: (-x[0], x[1]))
+    return candidates[0][2]
 
 
 def get_peer(agent_id: str) -> Optional[dict]:
@@ -165,6 +195,38 @@ async def call_peer_tool(target_agent: str, tool_name: str,
         return {"ok": False, "error": f"Connection failed: {e}"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+async def delegate_task(task: dict, caller: str = "agent_id") -> bool:
+    """Find a healthy peer and offload the task to them."""
+    target = get_healthiest_peer(exclude_agent=caller)
+    if not target:
+        logger.info("[Bridge] No healthy peers available for delegation.")
+        return False
+        
+    logger.info("[Bridge] Delegating task %s to peer: %s", task.get("task_id"), target)
+    
+    # We use assign_task tool on the peer
+    result = await call_peer_tool(
+        target, "assign_task", 
+        {"task": task.get("payload", {}).get("prompt") or task.get("task_id"), 
+         "priority": "high", "assign_to": None},
+        caller=caller
+    )
+    
+    return result.get("ok", False)
+
+
+async def heartbeat_loop(agent_id: str):
+    """Periodically announce presence and resource pressure to the mesh."""
+    from AgentOS.kernel import resource_monitor
+    while True:
+        try:
+            pressure = resource_monitor.get_pressure_report()
+            heartbeat(agent_id, pressure_report=pressure)
+        except Exception as e:
+            logger.error("Heartbeat failed: %s", e)
+        await asyncio.sleep(15) # 15s mesh heartbeat
 
 
 async def probe_peer(agent_id: str) -> bool:
