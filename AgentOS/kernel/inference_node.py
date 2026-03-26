@@ -37,6 +37,9 @@ import handlers.subsidiary_handlers as sub
 import handlers.reporting_handlers as rep
 import handlers.corporate_handlers as corp
 from handlers import specialized_prompts as prompts
+from handlers import persona_registry as registry
+import handlers.workforce_handlers as work
+import handlers.strategy_handlers as strategy
 import db
 
 import re
