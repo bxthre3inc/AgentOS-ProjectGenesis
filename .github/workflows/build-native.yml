@@ -6,6 +6,9 @@ on:
     tags: [ "v*" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -77,4 +80,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agentos-android-apk
-          path: AgentOS/native_app/src-tauri/gen/android/app/build/outputs/apk/release/app-release.apk
+          path: AgentOS/native_app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
