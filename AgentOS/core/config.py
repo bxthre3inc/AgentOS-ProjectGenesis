@@ -7,6 +7,10 @@ import sys
 import platform
 import logging
 
+def get_secret(key: str, default: str = None) -> str:
+    """Fetch a secret from environment or local vault."""
+    return os.getenv(key, default)
+
 # ── Environment Detection ─────────────────────────────────────────────────────
 IS_LINUX = platform.system() == "Linux"
 # Foxxd S67 / Mobile awareness (can be refined via build-time env vars)

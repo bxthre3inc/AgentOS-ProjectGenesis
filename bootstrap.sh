@@ -6,6 +6,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/AgentOS"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -73,6 +74,31 @@ mk "$ROOT/tenants/irrig8/actuation"
 touch "$ROOT/tenants/irrig8/sensor_data/.gitkeep"
 touch "$ROOT/tenants/irrig8/mapping/.gitkeep"
 touch "$ROOT/tenants/irrig8/actuation/.gitkeep"
+
+# ---------------------------------------------------------------------------
+# Security & Environment
+# ---------------------------------------------------------------------------
+info "── Security & Environment"
+VAULT="$BASE_DIR/secrets/.vault"
+mk "$VAULT"
+
+if [ ! -f "$VAULT/mesh.key" ]; then
+  info "Generating Mesh Key..."
+  openssl rand -hex 32 > "$VAULT/mesh.key"
+  ok "Generated $VAULT/mesh.key"
+fi
+
+if [ ! -f "$VAULT/ledger.key" ]; then
+  info "Generating Ledger Key (Fernet)..."
+  python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" > "$VAULT/ledger.key"
+  ok "Generated $VAULT/ledger.key"
+fi
+
+if [ ! -f "$BASE_DIR/.env" ] && [ -f "$BASE_DIR/.env.example" ]; then
+  info "Creating .env from .env.example..."
+  cp "$BASE_DIR/.env.example" "$BASE_DIR/.env"
+  ok "Created .env"
+fi
 
 # ---------------------------------------------------------------------------
 # Done
