@@ -16,12 +16,13 @@ from mcp.types import (
     CallToolResult, ListToolsResult
 )
 
-from . import database, secrets_vault, feature_flags, extensions_manager, command_bus, core
+from . import secrets_vault, feature_flags, extensions_manager, command_bus, core
 from . import actions_log as alog
 from . import peer_bridge, session_sync, agentos_client
 from .antigravity_server import ag_server as _ag, call_tool as _ag_call_tool, list_tools as _ag_list_tools
 
-WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from AgentOS.core import config
+from AgentOS.core.db import RQE
 
 app = Server("zo-antigravity-sync")
 
@@ -285,7 +286,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     trace_id = arguments.get("correlation_id")
 
     # Heartbeat + session
-    await database.update_agent_session(agent_id, "online")
+    await RQE.update_agent_session(agent_id, "online")
     # Log every tool invocation with performance tracking and trace context
     alog.record(action=name, agent=agent_id, category=_tool_category(name),
                 trace_id=trace_id,
@@ -311,7 +312,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             raw = base64.b64decode(arguments["content_b64"])
             rel = os.path.join("shared", "resources", arguments["dest_path"])
             result = core.write_resource(rel, raw, overwrite=arguments.get("overwrite", True))
-            await database.log_event("resource_push", agent_id, path=rel, payload={"size": len(raw)})
+            await RQE.log_event("resource_push", agent_id, path=rel, payload={"size": len(raw)})
             alog.record("sync_resource", agent_id, alog.CAT_RESOURCE, path=rel,
                         detail={"size": len(raw), "overwrite": arguments.get("overwrite", True)})
             return ok(result)
@@ -333,7 +334,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
     elif name == "delete_resource":
         deleted = core.delete_resource(arguments["path"])
-        await database.log_event("resource_delete", agent_id, path=arguments["path"])
+        await RQE.log_event("resource_delete", agent_id, path=arguments["path"])
         alog.record("delete_resource", agent_id, alog.CAT_RESOURCE,
                     path=arguments["path"], detail={"deleted": deleted})
         return ok({"deleted": deleted})
@@ -347,7 +348,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         secrets_vault.set_secret(arguments["name"], arguments["value"],
                                  owner=agent_id,
                                  visibility=arguments.get("visibility", "shared"))
-        await database.log_event("secret_set", agent_id, payload={"name": arguments["name"]})
+        await RQE.log_event("secret_set", agent_id, payload={"name": arguments["name"]})
         alog.record("set_secret", agent_id, alog.CAT_SECRET,
                     detail={"name": arguments["name"],
                             "visibility": arguments.get("visibility", "shared")})
@@ -372,7 +373,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         target_agent = None if arguments.get("global") else agent_id
         result = feature_flags.set_flag(arguments["flag"], arguments["enabled"],
                                         agent_id=target_agent, issuer=agent_id)
-        await database.log_event("feature_toggle", agent_id,
+        await RQE.log_event("feature_toggle", agent_id,
                                  payload={"flag": arguments["flag"],
                                           "enabled": arguments["enabled"]})
         alog.record("toggle_feature", agent_id, alog.CAT_FEATURE,
@@ -389,7 +390,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         cmd_id = await command_bus.issue_command(
             agent_id, arguments["target"],
             arguments["command"], arguments.get("args", {}))
-        await database.log_event("command_issued", agent_id, target=arguments["target"],
+        await RQE.log_event("command_issued", agent_id, target=arguments["target"],
                                  payload={"command": arguments["command"], "cmd_id": cmd_id})
         alog.record("issue_command", agent_id, alog.CAT_COMMAND,
                     target_agent=arguments["target"],
@@ -430,7 +431,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments["extension_id"], arguments["enabled"])
         if not result:
             return err("Extension not found")
-        await database.log_event("extension_toggle", agent_id,
+        await RQE.log_event("extension_toggle", agent_id,
                                  payload={"id": arguments["extension_id"],
                                           "enabled": arguments["enabled"]})
         alog.record("toggle_extension", agent_id, alog.CAT_EXTENSION,
@@ -446,7 +447,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return ok(result)
 
     elif name == "get_events":
-        events = await database.get_recent_events(arguments.get("limit", 50))
+        events = await RQE.get_recent_events(arguments.get("limit", 50))
         return ok({"events": events})
 
     elif name == "get_actions_log":
@@ -467,7 +468,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments.get("capabilities", []),
             arguments.get("api_key", "")
         )
-        await database.update_agent_session(agent_id, "online")
+        await RQE.update_agent_session(agent_id, "online")
         alog.record("register_peer", agent_id, alog.CAT_SESSION,
                     detail={"url": arguments["mcp_server_url"]})
         return ok({"registered": peer})
@@ -565,7 +566,7 @@ def _tool_category(tool: str) -> str:
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 async def run_mcp():
-    await database.init_db()
+    await RQE.init_db()
     loop = asyncio.get_event_loop()
     core.start_watcher(loop)
     alog.record("server_start", "system", alog.CAT_SYSTEM,

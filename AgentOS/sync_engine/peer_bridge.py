@@ -12,16 +12,7 @@ import time
 from typing import Optional, Callable
 import httpx
 from . import actions_log as alog, core
-
-REGISTRY_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "shared", "peer_registry.json"
-)
-
-# In-memory peer table
-_peers: dict[str, dict] = {}
-_call_hooks: list[Callable] = []
-
+from AgentOS.core import config
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -134,15 +125,15 @@ def _prune_stale(timeout_s: int = 60):
 
 
 def _save_registry():
-    os.makedirs(os.path.dirname(REGISTRY_FILE), exist_ok=True)
-    with open(REGISTRY_FILE, "w") as f:
+    os.makedirs(os.path.dirname(config.PEER_REGISTRY_PATH), exist_ok=True)
+    with open(config.PEER_REGISTRY_PATH, "w") as f:
         json.dump(_peers, f, indent=2)
 
 
 def _load_registry():
     global _peers
-    if os.path.exists(REGISTRY_FILE):
-        with open(REGISTRY_FILE) as f:
+    if os.path.exists(config.PEER_REGISTRY_PATH):
+        with open(config.PEER_REGISTRY_PATH) as f:
             _peers = json.load(f)
 
 
@@ -176,11 +167,10 @@ async def call_peer_tool(target_agent: str, tool_name: str,
     }
 
     # Generate HMAC Signature
-    mesh_key_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "secrets", ".vault", "mesh.key")
-    if os.path.exists(mesh_key_path):
+    if os.path.exists(config.MESH_KEY_PATH):
         import hmac
         import hashlib
-        with open(mesh_key_path, 'r') as f:
+        with open(config.MESH_KEY_PATH, 'r') as f:
             key = f.read().strip().encode()
         
         payload_str = f"{headers['X-Timestamp']}{headers['X-Nonce']}{json.dumps(arguments)}"

@@ -1,16 +1,9 @@
-"""
-provisioner.py — AgentOS Autonomous Subsidiary Provisioning
-Handles the creation of encrypted SQLite shards and SOP initialization.
-"""
 import os
 import aiosqlite
 import logging
 import sys
-import os
-# Add kernel to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import db
-import schema
+from AgentOS.core.db import RQE as db
+from AgentOS.kernel import schema
 
 logger = logging.getLogger("agentos.provisioner")
 

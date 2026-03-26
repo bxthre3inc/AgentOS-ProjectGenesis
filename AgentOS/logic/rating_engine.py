@@ -1,16 +1,13 @@
 """
 rating_engine.py — AgentOS Fit-to-Empire Rating Engine
-Uses Strategy Architect (Lyra) to perform conceptual audits.
 """
 import json
 import logging
 import sys
 import os
-# Add kernel to path for ctc_engine
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import ctc_engine
+from AgentOS.kernel import ctc_engine
 
-logger = logging.getLogger("agentos.rating_engine")
+logger = logging.getLogger("agentos.logic.rating_engine")
 
 async def audit_seed(title: str, description: str) -> dict:
     """

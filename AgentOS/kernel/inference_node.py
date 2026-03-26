@@ -30,17 +30,12 @@ _RUNTIME_COMPLETED = _AGENTOS_DIR / "runtime" / "tasks" / "completed"
 _RUNTIME_FAILED    = _AGENTOS_DIR / "runtime" / "tasks" / "failed"
 
 sys.path.insert(0, str(_KERNEL_DIR))
-from task_context import TaskContext
-import handlers.evolution_handlers as evo
-import handlers.product_handlers as prod
-import handlers.subsidiary_handlers as sub
-import handlers.reporting_handlers as rep
-import handlers.corporate_handlers as corp
-from handlers import specialized_prompts as prompts
-from handlers import persona_registry as registry
-import handlers.workforce_handlers as work
-import handlers.strategy_handlers as strategy
-import db
+from AgentOS.core import config, db, models, persona, security
+from AgentOS.core.db import RQE
+from AgentOS.core.models import TaskContext
+from AgentOS.kernel.registry import registry
+import AgentOS.logic.strategy as strategy
+import AgentOS.logic.corporate as corporate
 
 import re
 import os
@@ -50,9 +45,8 @@ from resource_monitor import PerformanceProfile
 import ctc_engine
 
 # Link to peer bridge for mesh-wide status
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "sync_engine"))
 try:
-    from sync_engine import peer_bridge
+    from AgentOS.sync_engine import peer_bridge
 except ImportError:
     peer_bridge = None
 
@@ -112,7 +106,7 @@ async def infer_intent(prompt: str) -> dict:
             response = await client.chat.completions.create(
                 model=model_id,
                 messages=[
-                    {"role": "system", "content": f"{registry.get_persona(agent_role)}\n\n### DEPARTMENT SOPs:\n{sop_context}"},
+                    {"role": "system", "content": f"{persona.get_persona(agent_role)}\n\n### DEPARTMENT SOPs:\n{sop_context}"},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"}
@@ -151,110 +145,63 @@ async def infer_intent(prompt: str) -> dict:
     return {"action": "noop", "message": "Could not infer intent."}
 
 # ---------------------------------------------------------------------------
-# Built-in action handlers
-# ---------------------------------------------------------------------------
-def _handle_noop(task: TaskContext) -> dict:
-    return {"status": "ok", "message": "noop — nothing to do."}
-
-
-def _handle_echo(task: TaskContext) -> dict:
-    return {"status": "ok", "echo": task.payload}
-
-
-def _handle_self_audit(task: TaskContext) -> dict:
-    """Walk the AgentOS directory tree and return a summary."""
-    entries = [str(p.relative_to(_AGENTOS_DIR)) for p in _AGENTOS_DIR.rglob("*")]
-    return {"status": "ok", "file_count": len(entries), "files": entries[:100]}
-
-
-_HANDLERS: dict[str, callable] = {
-    "noop":          _handle_noop,
-    "echo":          _handle_echo,
-    "self_audit":    _handle_self_audit,
-    
-    # Track-specific handlers
-    "optimize":      evo.handle_optimize,
-    "maintenance":   evo.handle_maintenance,
-    "wire":          prod.handle_wire,
-    "simulate":      sub.handle_simulate,
-    "report":        rep.handle_report,
-    "onboard":       lambda t: asyncio.run(corp.handle_onboard(t)),
-    "expense":       lambda t: asyncio.run(corp.handle_expense(t)),
-    "budget":        lambda t: asyncio.run(corp.handle_budget(t)),
-    
-    # Workforce & Collaboration
-    "hire":          lambda t: asyncio.run(work.handle_hire(t)),
-    "delegate":      lambda t: asyncio.run(work.handle_delegate(t)),
-    "message":       lambda t: asyncio.run(work.handle_message(t)),
-
-    # Strategy & Lifecycle
-    "idea_intake":   lambda t: asyncio.run(strategy.handle_idea_intake(t)),
-    "transition":    lambda t: asyncio.run(strategy.handle_lifecycle_transition(t)),
-    "milestone_sync": lambda t: asyncio.run(strategy.handle_milestone_sync(t)),
-    "pivot":         lambda t: asyncio.run(strategy.handle_pivot(t)),
-    "provision":     lambda t: asyncio.run(corp.handle_provision(t)),
-    "rate_seed":     lambda t: asyncio.run(strategy.handle_rate_seed(t)),
-}
-
-
-# ---------------------------------------------------------------------------
 # Main dispatch
 # ---------------------------------------------------------------------------
-def process(task: TaskContext) -> dict:
+
+async def process(task: TaskContext | dict) -> dict:
     """
-    Dispatch the TCO to the appropriate handler.
+    Main dispatch entry point for TCOs.
     Returns the result dict.  Raises on unrecoverable errors.
     """
+    # Auto-convert dict to Pydantic/Dataclass if needed
+    if isinstance(task, dict):
+        task = TaskContext(
+            task_id=task.get("task_id", "AUTO"),
+            tenant=task.get("tenant", "tenant_zero"),
+            payload=task.get("payload", {})
+        )
+
     action = task.payload.get("action")
     
     # Enable Natural Language inference if no hardcoded action is provided
     if not action and "prompt" in task.payload:
         logger.info("[Inference Node] Invoking LLM intent extraction...")
-        inferred = asyncio.run(infer_intent(task.payload["prompt"]))
+        inferred = await infer_intent(task.payload["prompt"])
         task.payload.update(inferred)
         action = task.payload.get("action", "noop")
     
     action = action or "noop"
     
-    handler = _HANDLERS.get(action)
-    if handler is None:
-        raise NotImplementedError(
-            f"No handler registered for action '{action}'. "
-            f"Available: {list(_HANDLERS.keys())}"
-        )
-
-    task.started_at = datetime.now(timezone.utc).isoformat()
-    t0 = time.perf_counter()
-
-    try:
-        result = handler(task)
-        elapsed_ms = (time.perf_counter() - t0) * 1e3
-        task.completed_at = datetime.now(timezone.utc).isoformat()
-        task.result = {**result, "_elapsed_ms": round(elapsed_ms, 3)}
-        _persist(task, _RUNTIME_COMPLETED)
+    handler = registry.get_handler(action)
+    if not handler:
+        # Check system defaults
+        if action == "ping":
+            return {"status": "ok", "msg": "pong"}
         
-        # Recursive Audit Log
-        if db._pool:
-            sql = """
-                INSERT INTO recursive_logs (patch_id, target_file, description, diff_summary, outcome, meta)
-                VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-                ON CONFLICT (patch_id) DO NOTHING
-            """
-            asyncio.run(db.execute(
-                sql, task.task_id, result.get("target", "kernel"),
-                task.payload.get("goal"), str(result.get("optimization") or result.get("action")),
-                "success", json.dumps(task.result), fetch=False
-            ))
-            
-        logger.info("Task %s completed in %.2f ms.", task.task_id, elapsed_ms)
-        return task.result
+        logger.error("[Inference] No handler registered for action: %s", action)
+        return {"status": "error", "message": f"Action '{action}' not recognized."}
+
+    t0 = time.perf_counter()
+    try:
+        # Silicon-speed ETA injection (CTC Mandate)
+        ctc = ctc_engine.calculate_ctc(100) # Baseline prompt len
+        eta = ctc["eta_human"]
+        
+        result = await handler(task)
+        elapsed_ms = (time.perf_counter() - t0) * 1e3
+        
+        final_res = {
+            **result, 
+            "eta": eta,
+            "_elapsed_ms": round(elapsed_ms, 3)
+        }
+        
+        logger.info("Task %s [%s] completed in %.2f ms.", task.task_id, action, elapsed_ms)
+        return final_res
 
     except Exception as exc:
-        task.error = str(exc)
-        task.completed_at = datetime.now(timezone.utc).isoformat()
-        _persist(task, _RUNTIME_FAILED)
-        logger.error("Task %s failed: %s", task.task_id, exc)
-        raise
+        logger.exception("Task %s failed: %s", task.task_id, exc)
+        return {"status": "error", "message": str(exc)}
 
 
 def _persist(task: TaskContext, dest_dir: Path) -> None:
