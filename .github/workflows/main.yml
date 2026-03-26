@@ -1,0 +1,137 @@
+name: AgentOS Pipeline
+
+on:
+  push:
+    branches: [ "master", "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Unit & Integration Tests
+  # ---------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with: { python-version: "3.13" }
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r AgentOS/requirements.txt
+          pip install fastapi uvicorn aiosqlite httpx psutil
+
+      - name: Run Core Tests
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          python AgentOS/kernel/tests/benchmark_rqe.py
+          python AgentOS/tenants/starting5/tests/test_a2a.py
+          python AgentOS/tenants/generic_template/tests/test_generic.py
+          python AgentOS/tests/test_corp_agents.py
+          python AgentOS/tests/test_rogue_isolation.py
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Build Native Apps (Linux & Android)
+  # ---------------------------------------------------------------------------
+  build-native:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')))
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [linux, android]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      # --- Linux specific setup ---
+      - name: Install Linux Deps
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev librsvg2-dev
+
+      # --- Android specific setup ---
+      - name: Setup Java & Android
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with: { distribution: 'zulu', java-version: '17' }
+      
+      - name: Setup Android SDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@v3
+        
+      - name: Install Rust
+        if: matrix.platform == 'android'
+        uses: dtolnay/rust-toolchain@stable
+        with: { targets: aarch64-linux-android, armv7-linux-androideabi }
+
+      # --- Unified Build ---
+      - name: Build Dashboard & Package
+        run: |
+          cd AgentOS/native_app
+          npm install
+          npm run build
+          if [ "${{ matrix.platform }}" == "android" ]; then
+            npm run tauri android init -- --ci
+            npm run tauri android build
+          else
+            # For Linux, we use the tauri-action for better release integration later
+            # But here we just build to verify
+            npm run tauri build -- --target x86_64-unknown-linux-gnu
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentos-${{ matrix.platform }}-build
+          path: |
+            AgentOS/native_app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            AgentOS/native_app/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Package Server
+  # ---------------------------------------------------------------------------
+  package-server:
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Zo Deployment Bundle
+        run: |
+          zip -r agentos-server.zip AgentOS/ -x "AgentOS/native_app/*" "**/node_modules/*" "**/__pycache__/*" ".git/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentos-server
+          path: agentos-server.zip
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Release (Tags only)
+  # ---------------------------------------------------------------------------
+  release:
+    needs: [build-native, package-server]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "**/*.{zip,deb,apk}"
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
