@@ -56,7 +56,7 @@ def run_mesh():
 
     time.sleep(1)
     print("\033[34m[4/4] Launching Hub MCP Server on stdio (READY)\033[0m\n")
-    run_mcp()
+    asyncio.run(run_mcp())
 
 
 if __name__ == "__main__":

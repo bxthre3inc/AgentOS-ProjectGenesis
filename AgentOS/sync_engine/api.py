@@ -12,11 +12,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from . import database, secrets_vault, feature_flags, extensions_manager, command_bus, core, auth
+from . import secrets_vault, feature_flags, extensions_manager, command_bus, core, auth
 from . import actions_log as alog
 
 # AgentOS Kernel Bridge
-from AgentOS.kernel import db as ao_db
+from AgentOS.core.db import RQE as ao_db
+from AgentOS.core.db import RQE as database
 
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DASHBOARD_DIR = os.path.join(WORKSPACE_ROOT, "dashboard")

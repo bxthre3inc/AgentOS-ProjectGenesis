@@ -256,7 +256,7 @@ async def heartbeat_loop(agent_id: str):
             
             # Master Election Awareness
             if is_master(agent_id):
-                core.broadcast_event({"type": "mesh_status", "msg": "NODE_IS_MASTER", "node": agent_id})
+                await core.broadcast_event({"type": "mesh_status", "msg": "NODE_IS_MASTER", "node": agent_id})
         except Exception as e:
             # logger.error("Heartbeat failed: %s", e)
             pass
