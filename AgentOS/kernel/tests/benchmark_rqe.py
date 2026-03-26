@@ -11,7 +11,7 @@ from pathlib import Path
 root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(root))
 
-from AgentOS.kernel.rqe import RQE
+from AgentOS.core.db import RQE
 
 async def run_benchmark(num_queries: int = 100):
     print(f"🚀 Starting RQE Benchmark: {num_queries} spatial queries...")
