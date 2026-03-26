@@ -7,9 +7,41 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Optional, Any
+from cryptography.fernet import Fernet
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "secrets", ".vault", "state.db")
+KEY_PATH = os.path.join(os.path.dirname(__file__), "..", "secrets", ".vault", "db.key")
 
+class SecureData:
+    _fernet = None
+
+    @classmethod
+    def get_cipher(cls):
+        if cls._fernet is None:
+            if os.path.exists(KEY_PATH):
+                with open(KEY_PATH, 'rb') as f:
+                    cls._fernet = Fernet(f.read().strip())
+            else:
+                # Fallback to plaintext if key is missing (dev mode)
+                return None
+        return cls._fernet
+
+    @classmethod
+    def encrypt(cls, data: str) -> str:
+        cipher = cls.get_cipher()
+        if not cipher or not data:
+            return data
+        return cipher.encrypt(data.encode()).decode()
+
+    @classmethod
+    def decrypt(cls, token: str) -> str:
+        cipher = cls.get_cipher()
+        if not cipher or not token:
+            return token
+        try:
+            return cipher.decrypt(token.encode()).decode()
+        except Exception:
+            return token # Return as is if decryption fails (likely plaintext)
 
 async def get_db() -> aiosqlite.Connection:
     db = await aiosqlite.connect(DB_PATH)
@@ -87,10 +119,11 @@ async def init_db():
 
 async def log_event(event_type: str, source: str, target: Optional[str] = None,
                     path: Optional[str] = None, payload: Optional[Any] = None):
+    encrypted_payload = SecureData.encrypt(json.dumps(payload)) if payload else None
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "INSERT INTO sync_events (event_type, source, target, path, payload) VALUES (?, ?, ?, ?, ?)",
-            (event_type, source, target, path, json.dumps(payload) if payload else None)
+            (event_type, source, target, path, encrypted_payload)
         )
         await db.commit()
 
@@ -119,7 +152,19 @@ async def get_recent_events(limit: int = 50) -> list:
             "SELECT * FROM sync_events ORDER BY created_at DESC LIMIT ?", (limit,)
         )
         rows = await cur.fetchall()
-        return [dict(r) for r in rows]
+        events = []
+        for r in rows:
+            d = dict(r)
+            if d.get("payload"):
+                try:
+                    # Decrypt and Parse JSON
+                    decrypted = SecureData.decrypt(d["payload"])
+                    d["payload"] = json.loads(decrypted)
+                except Exception:
+                    # Fallback to raw if not encrypted/invalid
+                    pass
+            events.append(d)
+        return events
 
 
 async def get_pending_commands(target: str) -> list:
@@ -130,13 +175,21 @@ async def get_pending_commands(target: str) -> list:
             (target,)
         )
         rows = await cur.fetchall()
-        return [dict(r) for r in rows]
+        cmds = []
+        for r in rows:
+            d = dict(r)
+            if d.get("args"):
+                # args might be encrypted
+                d["args"] = SecureData.decrypt(d["args"])
+            cmds.append(d)
+        return cmds
 
 
 async def resolve_command(command_id: int, result: Any):
+    encrypted_result = SecureData.encrypt(json.dumps(result)) if result else None
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "UPDATE commands SET status = 'done', result = ?, executed_at = datetime('now') WHERE id = ?",
-            (json.dumps(result), command_id)
+            (encrypted_result, command_id)
         )
         await db.commit()

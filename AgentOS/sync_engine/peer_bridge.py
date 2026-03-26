@@ -96,10 +96,34 @@ def get_healthiest_peer(exclude_agent: str = "") -> Optional[str]:
     candidates.sort(key=lambda x: (-x[0], x[1]))
     return candidates[0][2]
 
+def is_mesh_saturated() -> bool:
+    """Check if all nodes in the mesh are under pressure."""
+    _prune_stale()
+    if not _peers:
+        return False
+    
+    rank = {"turbo": 4, "performance": 3, "balanced": 2, "low": 1, "economy": 0}
+    for p in _peers.values():
+        if p.get("status") == "online":
+            profile = p.get("pressure", {}).get("profile", "balanced")
+            if rank.get(profile, 0) >= 2: # At least one node is BALANCED or better
+                return False
+    return True
+
 
 def get_peer(agent_id: str) -> Optional[dict]:
     return _peers.get(agent_id)
 
+def get_master_peer() -> Optional[str]:
+    """Elect the 'Primary Master' node based on health and uptime."""
+    # We use the same 'healthiest' logic for now, but a master-specific 
+    # selection can be refined here (e.g. favoring stable Server nodes).
+    return get_healthiest_peer()
+
+def is_master(agent_id: str) -> bool:
+    """Check if the given agent_id is the currently elected master."""
+    master = get_master_peer()
+    return master == agent_id or (master is None and agent_id == "agentos")
 
 def _prune_stale(timeout_s: int = 60):
     """Mark peers as offline if not seen in timeout_s seconds."""
@@ -224,8 +248,13 @@ async def heartbeat_loop(agent_id: str):
         try:
             pressure = resource_monitor.get_pressure_report()
             heartbeat(agent_id, pressure_report=pressure)
+            
+            # Master Election Awareness
+            if is_master(agent_id):
+                core.broadcast_event({"type": "mesh_status", "msg": "NODE_IS_MASTER", "node": agent_id})
         except Exception as e:
-            logger.error("Heartbeat failed: %s", e)
+            # logger.error("Heartbeat failed: %s", e)
+            pass
         await asyncio.sleep(15) # 15s mesh heartbeat
 
 

@@ -36,6 +36,7 @@ import handlers.product_handlers as prod
 import handlers.subsidiary_handlers as sub
 import handlers.reporting_handlers as rep
 import handlers.corporate_handlers as corp
+from handlers import specialized_prompts as prompts
 import db
 
 import re
@@ -43,6 +44,13 @@ import os
 import psutil # Add to requirements.txt if not present
 import resource_monitor
 from resource_monitor import PerformanceProfile
+import sys
+# Link to peer bridge for mesh-wide status
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "sync_engine"))
+try:
+    from sync_engine import peer_bridge
+except ImportError:
+    peer_bridge = None
 
 logger = logging.getLogger("agentos.inference_node")
 
@@ -64,15 +72,23 @@ async def infer_intent(prompt: str) -> dict:
     # Recommended for Foxxd S67 / 8GB RAM: 'phi3', 'stablelm-zephyr', 'tinyllama'
     model_id  = os.getenv("AGENTOS_LLM_MODEL", "phi3")
 
-    # Galaxy Laptop Optimization: Check Performance Profile
-    profile = resource_monitor.get_current_profile()
+    # Check if the entire mesh is saturated (all nodes are stressed)
+    mesh_saturated = peer_bridge.is_mesh_saturated() if peer_bridge else False
     
-    if profile in resource_monitor.REMOTE_INFERENCE_REQUIRED:
-        logger.warning("[Inference Node] High pressure mode (%s) active. Defaulting to Remote Inference.", profile.value.upper())
+    if profile in resource_monitor.REMOTE_INFERENCE_REQUIRED or mesh_saturated:
+        if mesh_saturated:
+            logger.warning("[Inference Node] ENTIRE MESH SATURATED. Using Zo Hosted Cloud GPU Handover.")
+        else:
+            logger.warning("[Inference Node] Local pressure mode (%s) active. Using mesh-to-cloud fallback.", profile.value.upper())
+        
         base_url = os.getenv("AGENTOS_REMOTE_LLM_URL", "https://api.openai.com/v1")
     
     if _OPENAI_AVAILABLE:
         try:
+            # Assign system prompt based on agent's role (extracted from payload or metadata)
+            agent_role = "default"
+            # TODO: Extract agent_role from task context or target metadata
+            
             client = openai.AsyncOpenAI(
                 api_key=api_key,
                 base_url=base_url
@@ -80,7 +96,7 @@ async def infer_intent(prompt: str) -> dict:
             response = await client.chat.completions.create(
                 model=model_id,
                 messages=[
-                    {"role": "system", "content": "You are AgentOS. Extract the action from the user prompt into JSON. Available actions: 'budget', 'expense', 'onboard'. Include args like 'amount', 'department', 'name', 'role'."},
+                    {"role": "system", "content": prompts.get_persona(agent_role)},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"}
