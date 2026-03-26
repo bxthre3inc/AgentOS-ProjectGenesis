@@ -6,6 +6,8 @@ import logging
 import asyncio
 from typing import List, Dict
 
+from AgentOS.kernel import inference_node
+
 logger = logging.getLogger("agentos.kernel.strategy")
 
 class StrategyMeetingHandler:
@@ -16,26 +18,50 @@ class StrategyMeetingHandler:
         self.active_session = False
 
     async def start_session(self, agenda: List[str]):
-        """Initiate a live strategy meeting."""
+        """Initiate a live strategy meeting using local AI reasoning."""
         self.active_session = True
         logger.info(f"[Strategy] Starting session for {self.subsidiary_id}. Agenda: {agenda}")
         
         results = []
         for item in agenda:
             logger.info(f"[Strategy] Processing item: {item}")
-            await asyncio.sleep(1.0) # Simulate LLM analysis
-            results.append({"item": item, "decision": "CONTINUE", "confidence": 0.95})
+            # Use local AI to evaluate the agenda item
+            res = await inference_node.process({
+                "task_id": f"STRAT-{self.subsidiary_id}-{int(asyncio.get_event_loop().time())}",
+                "tenant": self.subsidiary_id,
+                "payload": {
+                    "action": "evaluate_agenda_item",
+                    "item": item,
+                    "context": f"Strategy meeting for {self.subsidiary_id}"
+                }
+            })
+            results.append(res)
             
         self.active_session = False
         return results
 
     async def trigger_pivot_protocol(self, reason: str):
-        """Emergency pivot protocol for failing subsidiaries."""
+        """Emergency pivot protocol for failing subsidiaries using AI reasoning."""
         logger.warning(f"[Strategy] PIVOT PROTOCOL TRIGGERED: {reason}")
-        await asyncio.sleep(2.0)
-        return {"status": "PIVOTED", "new_direction": "BLUE_OCEAN_REVALIDATION"}
+        res = await inference_node.process({
+            "task_id": f"PIVOT-{self.subsidiary_id}",
+            "tenant": self.subsidiary_id,
+            "payload": {
+                "action": "strategic_pivot",
+                "reason": reason,
+                "subsidiary": self.subsidiary_id
+            }
+        })
+        return res
 
-    def decompose_milestone(self, milestone: str) -> List[str]:
-        """Break down a high-level milestone into actionable tasks."""
-        # Simple rule-based decomposition for v1
-        return [f"Task: {milestone} - Phase 1", f"Task: {milestone} - Phase 2"]
+    async def decompose_milestone(self, milestone: str) -> List[str]:
+        """Break down a high-level milestone into actionable tasks using AI."""
+        res = await inference_node.process({
+            "task_id": f"DECOMPOSE-{int(asyncio.get_event_loop().time())}",
+            "payload": {
+                "action": "decompose_milestone",
+                "milestone": milestone
+            }
+        })
+        # Extract tasks from AI response (assuming the local model returns a 'tasks' list)
+        return res.get("tasks", [f"Task: {milestone} - Phase 1", f"Task: {milestone} - Phase 2"])

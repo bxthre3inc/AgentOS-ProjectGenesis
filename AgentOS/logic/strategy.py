@@ -8,6 +8,8 @@ from AgentOS.core.models import TaskContext
 from AgentOS.kernel.registry import registry
 from . import rating_engine
 from . import provisioner
+import os
+from AgentOS.kernel.evolution_engine import EvolutionEngine
 
 logger = logging.getLogger("agentos.logic.strategy")
 
@@ -83,5 +85,10 @@ async def handle_reconcile_seeds(task: TaskContext) -> dict:
 
 @registry.register("optimize_core")
 async def handle_optimize(task: TaskContext) -> dict:
-    """Pulse: Trigger evolution engine optimizations."""
-    return {"status": "ok", "msg": "Optimizations scheduled"}
+    """Pulse: Trigger autonomous evolution engine optimizations."""
+    from AgentOS.core import config
+    engine = EvolutionEngine(config.WORKSPACE_ROOT)
+    tco_id = await engine.evolve()
+    if tco_id:
+        return {"status": "ok", "msg": f"Optimization TCO generated: {tco_id}", "tco_id": tco_id}
+    return {"status": "ok", "msg": "Kernel performance is within nominal bounds. No optimization needed."}
