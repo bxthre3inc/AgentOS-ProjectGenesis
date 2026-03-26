@@ -8,6 +8,7 @@ import time
 import logging
 from enum import Enum
 from dataclasses import dataclass
+from AgentOS.core import config
 
 try:
     import psutil
@@ -22,8 +23,8 @@ class PerformanceProfile(Enum):
     TURBO    = "turbo"     # Max speed, 0 delay, local LLM
     HIGH     = "performance" # High speed, tiny delay, local LLM
     BALANCED = "balanced"  # Mid speed, 500ms delay, local LLM
-    LOW      = "low"       # Slow speed, 1s delay, remote LLM fallback
-    CRITICAL = "economy"   # Minimal speed, 3s delay, remote LLM fallback
+    LOW      = "low"       # Slow speed, 1s delay, minimal local LLM
+    CRITICAL = "economy"   # Minimal speed, 3s delay, minimal local LLM
 
 @dataclass
 class Thresholds:
@@ -40,9 +41,6 @@ PROFILES = {
     PerformanceProfile.LOW:      Thresholds(ram_percent_min=20.0, ram_gb_min=1.0, cpu_percent_max=85.0, delay_sec=1.5),
     PerformanceProfile.CRITICAL: Thresholds(ram_percent_min=0.0,  ram_gb_min=0.0, cpu_percent_max=100.0, delay_sec=3.0),
 }
-
-# The point at which we MUST use remote inference for stability
-REMOTE_INFERENCE_REQUIRED = [PerformanceProfile.LOW, PerformanceProfile.CRITICAL]
 
 def get_current_profile() -> PerformanceProfile:
     """Assess system state and return the most adaptive performance profile."""
@@ -92,7 +90,8 @@ def get_pressure_report() -> dict:
             "cpu_p": round(cpu_p, 1),
             "ram_p": round((mem.available / mem.total) * 100, 1),
             "battery_p": battery.percent if battery else 100,
-            "is_charging": battery.power_plugged if battery else True
+            "is_charging": battery.power_plugged if battery else True,
+            "is_server": config.IS_SERVER
         }
     except Exception:
         return {"profile": "balanced", "cpu_p": 0, "ram_p": 0}

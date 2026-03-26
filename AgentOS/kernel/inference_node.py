@@ -41,6 +41,7 @@ import AgentOS.kernel.skills.ecosystem_skills as ecosystem_skills
 
 import re
 import os
+import random
 import psutil # Add to requirements.txt if not present
 import resource_monitor
 from resource_monitor import PerformanceProfile
@@ -54,75 +55,89 @@ except ImportError:
 
 logger = logging.getLogger("agentos.inference_node")
 
-try:
-    import openai
-    _OPENAI_AVAILABLE = True
-except ImportError:
-    openai = None
-    _OPENAI_AVAILABLE = False
+import httpx
 
-
-async def infer_intent(prompt: str) -> dict:
+async def get_department_sop(department: str) -> str:
     """
-    Use an LLM (or fallback parser) to convert natural language into a structured AgentOS action payload.
+    Fetch the Standard Operating Procedure (SOP) for a given department.
+    Backed by shared/department_sops.json.
     """
-    api_key   = os.getenv("OPENAI_API_KEY", "standalone-agentos")
-    # For standalone, we prioritize local Ollama or similar proxy
-    base_url  = os.getenv("AGENTOS_LLM_URL", "http://localhost:11434/v1")
-    # Recommended for Foxxd S67 / 8GB RAM: 'phi3', 'stablelm-zephyr', 'tinyllama'
-    model_id  = os.getenv("AGENTOS_LLM_MODEL", "phi3")
+    import json
+    from AgentOS.core import config
+    
+    sop_path = os.path.join(config.SHARED_DIR, "department_sops.json")
+    try:
+        with open(sop_path, "r") as f:
+            sops = json.load(f)
+        return sops.get(department.lower(), sops.get("general", "Follow standard protocols."))
+    except Exception as e:
+        logger.error("[Inference Node] Failed to load SOPs from %s: %s", sop_path, e)
+        return "Follow general conglomerate-scale automation protocols."
 
-    # Check if the entire mesh is saturated (all nodes are stressed)
-    mesh_saturated = peer_bridge.is_mesh_saturated() if peer_bridge else False
+async def infer_intent(task: TaskContext) -> dict:
+    """
+    Use a local LLM to convert natural language into a structured AgentOS action payload.
+    Supports multimodal inputs if an image is provided in the task payload.
+    """
+    prompt = task.payload.get("prompt", "")
+    image_data = task.payload.get("image") # Base64 or URL for multimodal
     
-    if profile in resource_monitor.REMOTE_INFERENCE_REQUIRED or mesh_saturated:
-        if mesh_saturated:
-            logger.warning("[Inference Node] ENTIRE MESH SATURATED. Using Zo Hosted Cloud GPU Handover.")
-        else:
-            logger.warning("[Inference Node] Local pressure mode (%s) active. Using mesh-to-cloud fallback.", profile.value.upper())
-        
-        base_url = os.getenv("AGENTOS_REMOTE_LLM_URL", "https://api.openai.com/v1")
+    base_url = config.LLM_BASE_URL
     
-    # 0. Select Model based on Resource Pressure
-    profile = resource_monitor.get_current_profile()
-    if profile in [PerformanceProfile.TURBO, PerformanceProfile.HIGH]:
-        model_id = os.getenv("AGENTOS_LLM_MODEL", "phi3")
-    elif profile == PerformanceProfile.BALANCED:
-        model_id = "phi2" # Faster/Smaller fallback
+    # Select model based on task type (Multimodal vs Text/Tools)
+    if image_data:
+        model_id = config.MULTIMODAL_MODEL
     else:
-        model_id = "tinyllama" # Minimal fallback
-        logger.info("[Inference Node] Switching to tinyllama due to resource pressure (%s)", profile.value)
+        model_id = config.DEFAULT_MODEL
 
-    if _OPENAI_AVAILABLE:
-        try:
-            # Assign system prompt based on agent's role
-            agent_role = task.payload.get("role", "default")
+    # Assign system prompt based on agent's role
+    agent_role = task.payload.get("role", "default")
+    sop_context = await get_department_sop(task.payload.get("department", "general"))
+    
+    system_prompt = f"{persona.get_persona(agent_role)}\n\n### DEPARTMENT SOPs:\n{sop_context}"
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+
+    # Add image if multimodal
+    if image_data and "llava" in model_id.lower() or "moondream" in model_id.lower():
+        # Adjusting for Ollama/OpenAI-compatible multimodal format
+        messages[-1]["content"] = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": image_data}}
+        ]
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                json={
+                    "model": model_id,
+                    "messages": messages,
+                    "response_format": {"type": "json_object"} if not image_data else None,
+                    "temperature": 0.0
+                }
+            )
+            resp.raise_for_status()
+            res_json = resp.json()
+            content = res_json["choices"][0]["message"]["content"]
             
-            # 1. Fetch Department SOPs for reasoning context
-            sop_context = asyncio.run(get_department_sop(task.payload.get("department", "general")))
-
-            client = openai.AsyncOpenAI(
-                api_key=api_key,
-                base_url=base_url
-            )
-            response = await client.chat.completions.create(
-                model=model_id,
-                messages=[
-                    {"role": "system", "content": f"{persona.get_persona(agent_role)}\n\n### DEPARTMENT SOPs:\n{sop_context}"},
-                    {"role": "user", "content": prompt}
-                ],
-                response_format={"type": "json_object"}
-            )
-            raw_res = json.loads(response.choices[0].message.content)
+            # Ollama sometimes returns raw JSON even if format is requested
+            raw_res = json.loads(content) if isinstance(content, str) else content
             
             # Inject CTC Mandate
-            ctc_res = ctc_engine.inject_ctc_header(raw_res, prompt)
+            ctc_res = await ctc_engine.inject_ctc_header(raw_res, prompt, action=task.payload.get("action", "default"))
             
-            return {**ctc_res, "_origin": "cloud" if mesh_saturated or profile in resource_monitor.REMOTE_INFERENCE_REQUIRED else "local"}
-        except Exception as e:
-            logger.warning("[Inference Node] LLM failed at %s, using fallback regex. Error: %s", base_url, e)
-    
-    # Fallback RegEx Parser if no LLM or key is available
+            return {**ctc_res, "_origin": "local", "_model": model_id}
+            
+    except Exception as e:
+        logger.warning("[Inference Node] Local LLM failed at %s. Error: %s", base_url, e)
+        return _fallback_regex(prompt)
+
+def _fallback_regex(prompt: str) -> dict:
+    # Fallback RegEx Parser if no LLM is available
     logger.info("[Inference Node] Using fallback regex parser for prompt: '%s'", prompt)
     prompt_lower = prompt.lower()
     
@@ -144,7 +159,7 @@ async def infer_intent(prompt: str) -> dict:
     elif "onboard" in prompt_lower or "hire" in prompt_lower:
         return {"action": "onboard", "name": "Auto Inferred", "role": "Inferred Role", "department": "generic_tenant"}
         
-    return {"action": "noop", "message": "Could not infer intent."}
+    return {"action": "noop", "_fallback": True}
 
 # ---------------------------------------------------------------------------
 # Main dispatch
@@ -165,12 +180,49 @@ async def process(task: TaskContext | dict) -> dict:
             payload=task.get("payload", {})
         )
 
+    # Advanced Decentralized Load Balancing
+    profile = resource_monitor.get_current_profile()
+    image_task = "image" in task.payload
+    
+    # Probabilistic Shedding Thresholds
+    shed_chance = 0.0
+    if profile == PerformanceProfile.CRITICAL:
+        shed_chance = 1.0
+    elif profile == PerformanceProfile.LOW:
+        shed_chance = 0.5
+    elif profile == PerformanceProfile.BALANCED:
+        shed_chance = 0.1
+        
+    # Strategic Routing: Always attempt to offload heavy multimodal tasks to servers if we are on a device
+    should_strategic_offload = image_task and not config.IS_SERVER
+    
+    if (random.random() < shed_chance or should_strategic_offload) and peer_bridge:
+        if not task.payload.get("_delegated"):
+            # If it's a strategic offload, we specifically request a server
+            reqs = {"is_server": True} if should_strategic_offload else None
+            
+            logger.info("[Inference Node] [%s] %s. Delegating task %s to mesh.", 
+                        profile.value.upper(), 
+                        "Strategic multimodal routing" if should_strategic_offload else "Probabilistic load shedding",
+                        task.task_id)
+            
+            task.payload["_delegated"] = True
+            task_dict = {"task_id": task.task_id, "tenant": task.tenant, "payload": task.payload}
+            success = await peer_bridge.delegate_task(task_dict, caller="agentos", requirements=reqs)
+            
+            if success:
+                return {
+                    "status": "delegated", 
+                    "message": "Task intelligently routed to mesh peer.",
+                    "strategy": "multimodal_offload" if should_strategic_offload else "load_shedding"
+                }
+    
     action = task.payload.get("action")
     
     # Enable Natural Language inference if no hardcoded action is provided
     if not action and "prompt" in task.payload:
-        logger.info("[Inference Node] Invoking LLM intent extraction...")
-        inferred = await infer_intent(task.payload["prompt"])
+        logger.info("[Inference Node] Invoking local LLM intent extraction...")
+        inferred = await infer_intent(task)
         task.payload.update(inferred)
         action = task.payload.get("action", "noop")
     

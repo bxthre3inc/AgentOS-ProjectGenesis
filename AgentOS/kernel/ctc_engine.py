@@ -29,7 +29,7 @@ async def calculate_ctc(action: str, prompt_len: int, expected_output_tokens: in
     
     total_sec = t_exec + t_wait
     
-    # Format to human readable
+    # Format to human-readable
     if total_sec < 60:
         human_readable = f"{round(total_sec, 1)} seconds"
     elif total_sec < 3600:
@@ -42,16 +42,19 @@ async def calculate_ctc(action: str, prompt_len: int, expected_output_tokens: in
         "t_wait": round(t_wait, 3),
         "total_sec": round(total_sec, 3),
         "eta_human": human_readable,
-        "source": "live_metrics" if history else "baseline_projection"
+        "source": "live_metrics" if history else "baseline_projection",
+        "tokens": expected_output_tokens,
+        "action": action
     }
 
-def inject_ctc_header(response: dict, prompt: str) -> dict:
+async def inject_ctc_header(response: dict, prompt: str, action: str = "default") -> dict:
     """Inject the CTC header into the response dict."""
-    ctc = calculate_ctc(len(prompt))
+    ctc = await calculate_ctc(action, len(prompt))
     response["_ctc_eta"] = ctc["eta_human"]
     response["_compute_metrics"] = {
-        "execution_volume": "T+ tokens",
-        "wait_state": "Async Buffer",
-        "cycle_count": "N Cycles"
+        "execution_volume": f"{ctc['tokens']} tokens",
+        "wait_state": "Buffer Saturated" if ctc['t_wait'] > 2.0 else "Nominal Latency",
+        "cycle_count": f"{round(ctc['total_sec'] * 10)} ops",
+        "t_wait_ms": round(ctc['t_wait'] * 1000, 2)
     }
     return response

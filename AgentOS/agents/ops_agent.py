@@ -33,12 +33,18 @@ class OpsAgent:
         return {"department": dept, "total_spent": float(total or 0.0)}
 
     async def validate_budget(self, dept: str, request_amount: float) -> bool:
-        """Enforce hard financial stops on generic tenants."""
+        """Enforce financial stops based on the Master Ledger budgets table."""
         status = await self.get_budget_status(dept)
         total_spent = status.get("total_spent", 0.0)
-        # Baseline limit for generic templates is 1000.0, as per default manifest
-        limit = 1000.0
         
+        # Fetch the real budget limit from the database
+        sql = "SELECT amount FROM budgets WHERE dept_id = $1 AND status = 'active' LIMIT 1"
+        try:
+            rows = await db.execute(sql, dept, fetch=True)
+            limit = float(rows[0]["amount"]) if rows else 1000.0 # Default fallback if no budget set
+        except Exception:
+            limit = 1000.0
+
         if total_spent + request_amount > limit:
             logger.warning("[Ops] Budget exceeded for %s. Limit: %.2f, Requested: %.2f, Spent: %.2f", 
                            dept, limit, request_amount, total_spent)

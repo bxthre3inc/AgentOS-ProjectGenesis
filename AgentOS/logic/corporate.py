@@ -4,7 +4,10 @@ from AgentOS.core.db import RQE
 from AgentOS.core.models import TaskContext
 from AgentOS.kernel.registry import registry
 from AgentOS.kernel import inference_node
+from AgentOS.agents.ops_agent import OpsAgent
 from . import provisioner
+
+ops = OpsAgent()
 
 logger = logging.getLogger("agentos.logic.corporate")
 
@@ -55,3 +58,17 @@ async def handle_dividend(task: TaskContext) -> dict:
     logger.info("[Corporate] Issuing dividend: %s", amount)
     # This would call a 'stripe_settle' skill in a full impl
     return {"status": "success", "amount": amount}
+
+@registry.register("budget")
+async def handle_budget(task: TaskContext) -> dict:
+    """Check budget for a department."""
+    dept = task.payload.get("department", "general")
+    return await ops.get_budget_status(dept)
+
+@registry.register("expense")
+async def handle_expense(task: TaskContext) -> dict:
+    """Record a department expense."""
+    amount = task.payload.get("amount", 0.0)
+    description = task.payload.get("description", "No description")
+    dept = task.payload.get("department", "general")
+    return await ops.log_expense(amount, description, dept)

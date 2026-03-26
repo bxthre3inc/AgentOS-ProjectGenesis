@@ -12,6 +12,19 @@ IS_LINUX = platform.system() == "Linux"
 # Foxxd S67 / Mobile awareness (can be refined via build-time env vars)
 IS_MOBILE = os.getenv("AGENTOS_PROFILE") == "mobile" or "android" in platform.version().lower()
 
+# Server detection (Zo.computer Hosting Services - 24GB RAM)
+def _is_server():
+    if os.getenv("AGENTOS_IS_SERVER") == "true":
+        return True
+    try:
+        import psutil
+        # Zo Basic plan comes with 24GB RAM. Anything above 16GB is considered server-class for us.
+        return psutil.virtual_memory().total > (16 * 1024**3)
+    except ImportError:
+        return False
+
+IS_SERVER = _is_server()
+
 # ── Path Resolution ───────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNTIME_DIR = os.path.join(BASE_DIR, "runtime")
@@ -33,13 +46,23 @@ MESH_KEY_PATH = os.path.join(VAULT_DIR, "mesh.key")
 ENCRYPTION_KEY_PATH = os.path.join(VAULT_DIR, "ledger.key") # Fernet Key
 
 # ── Inference ─────────────────────────────────────────────────────────────────
-# Profile-aware model selection
-if IS_MOBILE:
-    DEFAULT_MODEL = "phi3"
-    FALLBACK_MODEL = "tinyllama"
+# Profile-aware LOCAL-ONLY model selection (Open Source)
+# Device: HP Chromebook A14 G5 / Foxxd HTH S67
+# Server: Zo.computer Hosting Services (24GB RAM)
+
+if IS_SERVER:
+    # High-capacity server models: Optimized for 24GB RAM
+    DEFAULT_MODEL    = os.getenv("AGENTOS_LLM_MODEL", "phi3:medium-128k") # 14B - Instruct
+    MULTIMODAL_MODEL = "llava:13b-v1.6-vicuna-q4_K_M" 
+    FALLBACK_MODEL   = "llama3:8b-instruct-q8_0"
 else:
-    DEFAULT_MODEL = os.getenv("AGENTOS_LLM_MODEL", "gpt-4o")
-    FALLBACK_MODEL = "phi3"
+    # Optimized mobile/linux models: Optimized for 4GB RAM (S67/Chromebook)
+    DEFAULT_MODEL    = os.getenv("AGENTOS_LLM_MODEL", "phi3:3.8b-mini-instruct-4k-q4_K_M")
+    MULTIMODAL_MODEL = "moondream2:latest" # Efficient 1.6B multimodal
+    FALLBACK_MODEL   = "tinyllama:1.1b-chat-v1.1-q4_K_M"
+
+# Local Ollama endpoint by default
+LLM_BASE_URL = os.getenv("AGENTOS_LLM_URL", "http://localhost:11434/v1")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 def setup_logging(level=logging.INFO):

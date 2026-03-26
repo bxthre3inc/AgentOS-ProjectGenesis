@@ -11,6 +11,7 @@ sys.path.append(str(root))
 
 from AgentOS.kernel.task_context import TaskContext
 from AgentOS.kernel import inference_node
+import asyncio
 
 def test_inference_node():
     print("🧠 Testing Inference Node NLP Routing...\n")
@@ -30,7 +31,7 @@ def test_inference_node():
     
     # Process the task
     print(f"[Input] {prompt_payload['prompt']}")
-    result = inference_node.process(task)
+    result = asyncio.run(inference_node.process(task))
     
     print("\n[Output Result]")
     print(json.dumps(result, indent=2))

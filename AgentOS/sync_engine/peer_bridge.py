@@ -61,13 +61,10 @@ def get_peers() -> list[dict]:
     return list(_peers.values())
 
 
-def get_healthiest_peer(exclude_agent: str = "") -> Optional[str]:
-    """Return the ID of the peer with the lowest resource pressure."""
+def get_healthiest_peer(exclude_agent: str = "", requirements: dict = None) -> Optional[str]:
+    """Return the ID of the peer with the highest weighted compute score."""
     _prune_stale()
     candidates = []
-    
-    # Priority rank for profiles
-    rank = {"turbo": 4, "performance": 3, "balanced": 2, "low": 1, "economy": 0}
     
     for aid, p in _peers.items():
         if aid == exclude_agent or p.get("status") != "online":
@@ -75,17 +72,29 @@ def get_healthiest_peer(exclude_agent: str = "") -> Optional[str]:
         
         pressure = p.get("pressure", {})
         profile = pressure.get("profile", "balanced")
+        is_server = pressure.get("is_server", False)
         
-        # We only delegate to nodes that are at least BALANCED
-        if rank.get(profile, 0) >= 2:
-            candidates.append((rank.get(profile, 0), pressure.get("cpu_p", 100), aid))
+        # We only delegate to nodes that are at least BALANCED (or better)
+        # unless it's a server (servers can handle more)
+        if profile in ["turbo", "performance", "balanced"] or is_server:
+            # Weighted Score: (RAM_GB * 10) + CPU_Idle - Latency_penalty + Server_Bonus
+            # This favors servers and high-resource nodes with low latency.
+            ram_gb = pressure.get("ram_p", 0) / 10.0 # Approximation if real GB is missing
+            cpu_idle = 100 - pressure.get("cpu_p", 100)
+            latency_ms = p.get("latency_ms", 50)
+            
+            score = (ram_gb * 10) + cpu_idle - (latency_ms / 5.0)
+            if is_server:
+                score += 200 # Significant server priority
+                
+            candidates.append((score, aid))
             
     if not candidates:
         return None
         
-    # Sort by rank (desc) then CPU (asc)
-    candidates.sort(key=lambda x: (-x[0], x[1]))
-    return candidates[0][2]
+    # Sort by score descending
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
 
 def is_mesh_saturated() -> bool:
     """Check if all nodes in the mesh are under pressure."""
@@ -226,20 +235,27 @@ async def call_peer_tool(target_agent: str, tool_name: str,
         return {"ok": False, "error": str(e)}
 
 
-async def delegate_task(task: dict, caller: str = "agent_id") -> bool:
+async def delegate_task(task_obj: dict, caller: str = "agent_id", requirements: dict = None) -> bool:
     """Find a healthy peer and offload the task to them."""
-    target = get_healthiest_peer(exclude_agent=caller)
+    target = get_healthiest_peer(exclude_agent=caller, requirements=requirements)
     if not target:
         logger.info("[Bridge] No healthy peers available for delegation.")
         return False
         
-    logger.info("[Bridge] Delegating task %s to peer: %s", task.get("task_id"), target)
+    logger.info("[Bridge] Delegating task %s to peer: %s", task_obj.get("task_id"), target)
     
-    # We use assign_task tool on the peer
+    # We use assign_task tool on the peer, passing the full task structure
     result = await call_peer_tool(
         target, "assign_task", 
-        {"task": task.get("payload", {}).get("prompt") or task.get("task_id"), 
-         "priority": "high", "assign_to": None},
+        {
+            "task": task_obj.get("payload", {}).get("prompt") or task_obj.get("task_id"), 
+            "priority": "high",
+            "metadata": {
+                "original_task_id": task_obj.get("task_id"),
+                "tenant": task_obj.get("tenant"),
+                "payload": task_obj.get("payload")
+            }
+        },
         caller=caller
     )
     
