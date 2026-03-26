@@ -1,67 +1,58 @@
-# AgentOS
+# 🌌 AgentOS: The Conglomerate Operating System
 
-> **Bxthre3 Inc. — Recursive Systems Kernel**
-> Version 1.0.0 · Zo-Native · Headless Build
+[![v1.0-GENESIS](https://img.shields.io/badge/Release-v1.0--Genesis-blueviolet?style=for-the-badge)](https://github.com/bxthre3inc/AgentOS-ProjectGenesis)
+[![License: Proprietary](https://img.shields.io/badge/License-Bxthre3_Proprietary-red?style=for-the-badge)](LICENSE)
+[![Uptime: 99.9%](https://img.shields.io/badge/Uptime-99.9%25-green?style=for-the-badge)](STATUS)
 
-AgentOS is a self-contained, self-evolving operating layer that manages three top-level tenants
-and treats its own source code as its primary optimisation target (Tenant Zero).
-
----
-
-## Hierarchy
-
-| Tier | Codename | Role |
-|------|----------|------|
-| Tenant Zero | `agentos_internal` | Self-improvement staging |
-| Product Alpha | `starting5` | R&D product (Starting5) |
-| Subsidiary Beta | `irrig8` | Ag-Tech BU (Irrig8) |
+**AgentOS** is the world's first decentralized **Incubator-to-Holding** Business Operating System. It allows Bxthre3 Inc. to build, validate, and spin off autonomous corporate subsidiaries with 100% AI-led governance.
 
 ---
 
-## Quick Start
+## 🏛️ Ecosystem Overview
+AgentOS isn't just a kernel; it's a factory for companies. It manages a **Unified Workforce** of Agents, Humans, and Robots across multiple corporate entities.
 
-```bash
-# 1 — Bootstrap the full directory tree
-bash bootstrap.sh
+### 🚀 Key Features
+- **Incubator Lifecycle**: Seamless transition from `INCUBATING` -> `AUTONOMOUS` -> `SPIN-OFF`.
+- **Strategic Intelligence**: Auto-Task Identification from roadmaps and autonomous "Pivot Protocol."
+- **Master Ledger**: Hardened AES-256 encrypted SQLite ledger sharded by `CompanyID`.
+- **Multimodal OS**: Native Voice COMMAND (STT/TTS) and Live Strategy Meeting handlers.
+- **Unified Persona Registry**: Specialized AI roles (CEO, HR, Ops, Security, R&D).
 
-# 2 — Run the kernel (dry-run probe)
-python3 AgentOS/kernel/kernel_main.py --dry-run
+---
 
-# 3 — Run the Maintenance Agent (benchmarks TCO hand-off speed)
-python3 AgentOS/agents/maintenance_agent.py
+## 🔗 Deep Integrations
+AgentOS is the bridge between AI logic and the tools your business depends on:
+- **Productivity**: Google Workspace (Calendar/Drive), Airtable, Notion, Linear.
+- **Communication**: Native SMS, Email protocols, Slack, and Discord.
+- **Finance**: DeFi (Uniswap/Aave) and legacy ERP synchronization.
+- **Management**: Integrated Open Source CRM and Workforce Ledger.
+
+---
+
+## 🛠️ Architecture
+```mermaid
+graph TD
+    A[Human Executive / Cockpit] -->|Voice/UI| B[AgentOS Kernel]
+    B --> C[Master Ledger / SQLite]
+    B --> D[Inference Node / LLM]
+    B --> E[Global Command Bus]
+    E --> F[Subsidiary A: Autonomous]
+    E --> G[Subsidiary B: Incubating]
+    F --> H[Agentic CEO]
+    G --> I[R&D Agent]
 ```
 
 ---
 
-## Directory Layout
-
-```
-agentos/
-├── system_manifest.json          ← Tenant boundary definitions
-├── bootstrap.sh                  ← Idempotent setup script
-├── AgentOS/
-│   ├── kernel/                   ← Core reasoning engine
-│   │   ├── kernel_main.py
-│   │   ├── task_context.py
-│   │   └── inference_node.py
-│   ├── runtime/
-│   │   └── tasks/
-│   │       ├── pending/
-│   │       ├── completed/
-│   │       └── failed/
-│   ├── agents/
-│   │   ├── maintenance_agent.py
-│   │   └── agent_manifest.json
-│   └── tenants/
-│       ├── agentos_internal/     ← Tenant Zero
-│       ├── starting5/            ← Product Alpha
-│       └── irrig8/               ← Subsidiary Beta
-```
+## 📅 Roadmap to v1.0 Production
+- [x] Multi-Tenant Encrypted Ledger.
+- [x] Persona & Workforce Registry.
+- [x] Strategic Milestone Decomposition.
+- [ ] Native Voice STT/TTS Implementation.
+- [ ] Strategy Meeting Live Handlers.
+- [ ] Bxthre3 "War Room" Dashboard.
 
 ---
 
-## Operational Constraints
-
-- **Fully self-contained** — all logic and data stay on the Zo instance.
-- **Headless** — managed via Antigravity IDE terminal.
-- **Stateless execution** — state is persisted in Task Context Objects (JSON) on disk.
+© 2026 **Bxthre3 Inc.** All Rights Reserved. 
+Designed for the Foxxd S67 and Zo Hosted Cloud.
