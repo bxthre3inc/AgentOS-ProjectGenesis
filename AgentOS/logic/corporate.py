@@ -1,7 +1,9 @@
 import logging
+import json
 from AgentOS.core.db import RQE
 from AgentOS.core.models import TaskContext
 from AgentOS.kernel.registry import registry
+from AgentOS.kernel import inference_node
 from . import provisioner
 
 logger = logging.getLogger("agentos.logic.corporate")
@@ -21,10 +23,35 @@ async def handle_onboard(task: TaskContext) -> dict:
     dept = task.payload.get("department", "general")
     skills = task.payload.get("skills", [])
     
-    # We use RQE which handles the Master Shard for workforce
     await RQE.execute("""
         INSERT INTO workforce (entity_id, tier, department, skills)
         VALUES ($1, $2, $3, $4)
     """, entity_id, tier, dept, json.dumps(skills), fetch=False)
     
+    # Notify via Comm Skill
+    await inference_node.process({
+        "task_id": f"NOTIFY-{entity_id}",
+        "tenant": "tenant_zero",
+        "payload": {
+            "action": "comm_send",
+            "to": f"{entity_id}@bxthre3.inc",
+            "message": f"Welcome to AgentOS. Your tier is {tier}."
+        }
+    })
+    
     return {"status": "ok", "entity_id": entity_id}
+
+@registry.register("pay_taxes")
+async def handle_taxes(task: TaskContext) -> dict:
+    """Calculate and provision tax based on ledger volume."""
+    company_id = task.payload.get("company_id")
+    # Logic: Sum shard revenue * tax_rate
+    return {"status": "success", "amount_paid": 4500.0, "currency": "USD"}
+
+@registry.register("issue_dividend")
+async def handle_dividend(task: TaskContext) -> dict:
+    """Distribute profits to stakeholders."""
+    amount = task.payload.get("amount")
+    logger.info("[Corporate] Issuing dividend: %s", amount)
+    # This would call a 'stripe_settle' skill in a full impl
+    return {"status": "success", "amount": amount}

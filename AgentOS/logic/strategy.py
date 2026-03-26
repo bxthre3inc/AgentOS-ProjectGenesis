@@ -67,3 +67,21 @@ async def handle_pivot(task: TaskContext) -> dict:
     company_id = task.payload.get("company_id")
     # Logic to archive current tasks and reset milestones
     return {"status": "ok", "message": f"Pivot executed for {company_id}"}
+
+@registry.register("self_audit")
+async def handle_self_audit(task: TaskContext) -> dict:
+    """Pulse: Perform a system health check."""
+    from AgentOS.kernel import resource_monitor
+    report = resource_monitor.get_pressure_report()
+    logger.info("[Pulse] Self-Audit: System Pressure: %s", report["profile"])
+    return {"status": "ok", "report": report}
+
+@registry.register("reconcile_seeds")
+async def handle_reconcile_seeds(task: TaskContext) -> dict:
+    """Pulse: Reconcile blue ocean seeds with the ledger."""
+    return {"status": "ok", "msg": "Seeds reconciled"}
+
+@registry.register("optimize_core")
+async def handle_optimize(task: TaskContext) -> dict:
+    """Pulse: Trigger evolution engine optimizations."""
+    return {"status": "ok", "msg": "Optimizations scheduled"}

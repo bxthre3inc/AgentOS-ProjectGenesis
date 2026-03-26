@@ -37,6 +37,7 @@ from AgentOS.kernel.registry import registry
 import AgentOS.logic.strategy as strategy
 import AgentOS.logic.corporate as corporate
 import AgentOS.logic.evaluation as evaluation
+import AgentOS.kernel.skills.ecosystem_skills as ecosystem_skills
 
 import re
 import os
