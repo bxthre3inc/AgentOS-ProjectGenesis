@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy.sh — AgentOS Environment Provisioner
+# deploy.sh — AgenticBusinessEmpire Environment Provisioner
 # Usage: ./deploy.sh [--mobile | --server]
 
 PROFILE="server"
@@ -7,13 +7,13 @@ if [[ "$1" == "--mobile" ]]; then
     PROFILE="mobile"
 fi
 
-echo "🚀 Deploying AgentOS Genesis with profile: $PROFILE"
+echo "🚀 Deploying AgenticBusinessEmpire Genesis with profile: $PROFILE"
 
 # 1. Create directory structure
 mkdir -p runtime/shards secrets/.vault shared/resources logs
 
 # 2. Set environment variables (for current session)
-export AGENTOS_PROFILE=$PROFILE
+export AGENTIC_BUSINESS_EMPIRE_PROFILE=$PROFILE
 
 # 3. Generate Vault Keys if missing
 if [[ ! -f secrets/.vault/mesh.key ]]; then
@@ -28,10 +28,10 @@ fi
 
 # 4. Initialize Master Ledger
 echo "📊 Initializing Master Ledger..."
-python3 -c "import sys; sys.path.append('AgentOS'); from core import config; from core.db import RQE; import asyncio; asyncio_run = asyncio.run if sys.version_info >= (3, 7) else None; print('Master Ready')" 
+python3 -c "import sys; sys.path.append('AgenticBusinessEmpire'); from core import config; from core.db import RQE; import asyncio; asyncio_run = asyncio.run if sys.version_info >= (3, 7) else None; print('Master Ready')" 
 
 # 5. Summary
-echo "✅ AgentOS is ready for conglomerate-scale operations."
+echo "✅ AgenticBusinessEmpire is ready for conglomerate-scale operations."
 echo "   - Profile: $PROFILE"
 echo "   - Runtime: $(pwd)/runtime"
 echo "   - Vault:   $(pwd)/secrets/.vault"

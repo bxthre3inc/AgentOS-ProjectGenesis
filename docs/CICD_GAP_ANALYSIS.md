@@ -1,4 +1,4 @@
-# AgentOS CI/CD Gap Analysis — Zo Hosting Integration
+# AgenticBusinessEmpire CI/CD Gap Analysis — Zo Hosting Integration
 
 **Date:** 2026-03-26  
 **Pipeline Status:** 🟠 PARTIAL — Native builds work, Zo deployment missing
@@ -13,7 +13,7 @@
 |-----|--------|--------|
 | `test` | ✅ | Python 3.13, pytest runs 4 test files |
 | `build-native` | ✅ | Android APK + Linux .deb generated |
-| `package-server` | ✅ | `agentos-server.zip` artifact |
+| `package-server` | ✅ | `agenticbusinessempire-server.zip` artifact |
 | `deploy-server` | ❌ **SIMULATION ONLY** | Echoes fake success message |
 | `release` | ✅ | GitHub release with artifacts |
 
@@ -35,21 +35,21 @@
 
 These routes **already exist** on `brodiblanco.zo.space` but are **NOT** deployed by CI/CD:
 
-### AgentOS API Routes (public)
+### AgenticBusinessEmpire API Routes (public)
 | Route | Status | Authenticated | Notes |
 |-------|--------|---------------|-------|
-| `/api/agentos/status` | ✅ | Yes (Bearer token) | Returns dashboard data |
-| `/api/agentos/integrations` | ✅ | No | 13 integrations listed |
-| `/api/agentos/org` | ✅ | No | Org chart hierarchy |
-| `/api/agentos/workforce/metrics` | ✅ | No | Workforce analytics |
-| `/api/agentos/tasks` | ✅ | No | Task list endpoint |
-| `/api/agentos/starting5` | ✅ | No | Starting 5 data |
-| `/api/agentos/projects` | ✅ | No | Projects data |
-| `/api/agentos/agents` | ✅ | No | Agent roster |
-| `/api/agentos/escalations` | ✅ | No | P0/P1 escalations |
-| `/api/agentos/workqueue` | ✅ | No | Background tasks |
+| `/api/agenticbusinessempire/status` | ✅ | Yes (Bearer token) | Returns dashboard data |
+| `/api/agenticbusinessempire/integrations` | ✅ | No | 13 integrations listed |
+| `/api/agenticbusinessempire/org` | ✅ | No | Org chart hierarchy |
+| `/api/agenticbusinessempire/workforce/metrics` | ✅ | No | Workforce analytics |
+| `/api/agenticbusinessempire/tasks` | ✅ | No | Task list endpoint |
+| `/api/agenticbusinessempire/starting5` | ✅ | No | Starting 5 data |
+| `/api/agenticbusinessempire/projects` | ✅ | No | Projects data |
+| `/api/agenticbusinessempire/agents` | ✅ | No | Agent roster |
+| `/api/agenticbusinessempire/escalations` | ✅ | No | P0/P1 escalations |
+| `/api/agenticbusinessempire/workqueue` | ✅ | No | Background tasks |
 
-### AgentOS Web Routes
+### AgenticBusinessEmpire Web Routes
 | Route | Auth | Notes |
 |-------|------|-------|
 | `/aos` | Private | React dashboard (v4) — current build |
@@ -83,8 +83,8 @@ Need to add to `main.yml`:
   with:
     token: ${{ secrets.ZO_API_TOKEN }}
     routes: |
-      /api/agentos/status
-      /api/agentos/integrations
+      /api/agenticbusinessempire/status
+      /api/agenticbusinessempire/integrations
       /aos
 ```
 
@@ -93,10 +93,10 @@ Need to add to `main.yml`:
 Android APK builds but **NOT** automatically published to download endpoint:
 
 ```
-Trash/ARCHIVED_2026-03-26/the-agentos-native/releases/agentos-6.0.0-debug.apk
+Trash/ARCHIVED_2026-03-26/the-agenticbusinessempire-native/releases/agenticbusinessempire-6.0.0-debug.apk
 ```
 
-This should be deployed to `/download/agentos.apk` route.
+This should be deployed to `/download/agenticbusinessempire.apk` route.
 
 ---
 
@@ -114,7 +114,7 @@ This should be deployed to `/download/agentos.apk` route.
 
 | Action | Assignee | Effort |
 |--------|----------|--------|
-| Auto-deploy APK to `/download/agentos.apk` | Dev | 3h |
+| Auto-deploy APK to `/download/agenticbusinessempire.apk` | Dev | 3h |
 | Add route health check post-deploy | Dev | 2h |
 | Version pinning for API routes | Dev | 4h |
 
@@ -122,7 +122,7 @@ This should be deployed to `/download/agentos.apk` route.
 
 ## Key Insight
 
-Your **AgentOS v6.0.0 server** (Python) runs FastAPI on port 7880-7881 locally, but **Zo.space uses Hono routes**. These are two different deployment targets:
+Your **AgenticBusinessEmpire v6.0.0 server** (Python) runs FastAPI on port 7880-7881 locally, but **Zo.space uses Hono routes**. These are two different deployment targets:
 
 1. **Local/Tauri/Python:** The `main.py mesh` server (ports 7880-7881)
 2. **Zo.space Routes:** TypeScript files deployed via `update_space_route()`
@@ -145,7 +145,7 @@ jobs:
         run: |
           curl -X POST https://api.zo.computer/space/update-route \
             -H "Authorization: Bearer ${{ secrets.ZO_API_TOKEN }}" \
-            --data-binary @routes/api-agentos-status.ts
+            --data-binary @routes/api-agenticbusinessempire-status.ts
       - name: Deploy Dashboard
         run: |
           curl -X POST https://api.zo.computer/space/update-route \

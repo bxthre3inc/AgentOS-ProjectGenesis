@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgenticBusinessEmpire Client</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <!-- Ambient glow orbs -->
+  <div class="orb orb-zo" aria-hidden="true"></div>
+  <div class="orb orb-ag" aria-hidden="true"></div>
+
+  <header class="header">
+    <div class="header-brand">
+      <span class="brand-ao" style="color:var(--ao);font-weight:800;letter-spacing:-1px">AgenticBusinessEmpire</span>
+      <span class="brand-tag">Client v2.0 (Standalone)</span>
+    </div>
+    <div class="header-status">
+      <span id="ws-dot" class="status-dot offline"></span>
+      <span id="ws-label">Connecting…</span>
+      <span class="divider">|</span>
+      <span id="file-count" class="stat-pill">— files</span>
+      <span id="conn-count" class="stat-pill">— clients</span>
+    </div>
+  </header>
+
+  <!-- Mesh Topology Map -->
+  <section class="topology-container">
+    <div id="mesh-topology" class="mesh-topology">
+      <svg id="topo-svg" viewBox="0 0 800 300">
+        <!-- Lines will be dynamically pulsed via JS -->
+        <line id="line-zo-ag" class="topo-line" x1="180" y1="150" x2="400" y2="150"></line>
+        <line id="line-ag-ao" class="topo-line" x1="400" y1="150" x2="620" y2="150"></line>
+        <path id="line-zo-ao" class="topo-line" d="M 180 150 Q 400 280 620 150" fill="transparent"></path>
+      </svg>
+      <div class="topo-node zo-node" style="left:180px; top:150px">Z</div>
+      <div class="topo-node ag-node" style="left:400px; top:150px">A</div>
+      <div class="topo-node ao-node" style="left:620px; top:150px">⚙</div>
+    </div>
+  </section>
+
+  <!-- Agent Status Summary -->
+  <section class="agents-row">
+    <div class="agent-card" id="card-zo">
+      <div class="agent-avatar zo-avatar">Z</div>
+      <div class="agent-info">
+        <div class="agent-name">Zo</div>
+        <div class="agent-platform">zo.computer · Basic</div>
+      </div>
+      <span class="agent-badge" id="badge-zo">offline</span>
+    </div>
+    <div class="sync-arrows">
+      <div class="arrow-line"><span class="arrow-pulse"></span></div>
+      <div class="mesh-label">Full Mesh</div>
+    </div>
+    <div class="agent-card" id="card-ag">
+      <div class="agent-avatar ag-avatar">A</div>
+      <div class="agent-info">
+        <div class="agent-name">Antigravity</div>
+        <div class="agent-platform">Gemini · IDE Server</div>
+      </div>
+      <span class="agent-badge" id="badge-ag">offline</span>
+    </div>
+    <div class="sync-arrows">
+      <div class="arrow-line"><span class="arrow-pulse" style="animation-delay:-1s"></span></div>
+    </div>
+    <div class="agent-card" id="card-agenticbusinessempire">
+      <div class="agent-avatar ao-avatar">⚙</div>
+      <div class="agent-info">
+        <div class="agent-name">AgenticBusinessEmpire</div>
+        <div class="agent-platform">Workforce · War Room</div>
+      </div>
+      <span class="agent-badge" id="badge-agenticbusinessempire">offline</span>
+    </div>
+  </section>
+
+  <!-- Tab nav -->
+  <nav class="tab-nav" role="tablist">
+    <button class="tab tab-ao active" data-tab="ao" role="tab">War Room</button>
+    <button class="tab" data-tab="events" role="tab">Events</button>
+    <button class="tab" data-tab="workspace" role="tab">Workspace</button>
+    <button class="tab" data-tab="commands" role="tab">Commands</button>
+    <button class="tab" data-tab="features" role="tab">Features</button>
+    <button class="tab" data-tab="secrets" role="tab">Secrets</button>
+    <button class="tab" data-tab="extensions" role="tab">Extensions</button>
+    <button class="tab" data-tab="messages" role="tab">Messages</button>
+    <button class="tab" data-tab="actionslog" role="tab">Actions Log</button>
+    <div class="nav-divider"></div>
+    <button class="tab tab-zo" data-tab="zo" role="tab">Zo</button>
+    <button class="tab tab-ag" data-tab="ag" role="tab">Antigravity</button>
+  </nav>
+
+  <!-- Panels -->
+  <main class="panels">
+
+    <!-- Events -->
+    <section class="panel" id="panel-events">
+      <div class="panel-header">
+        <h2>Live Event Stream</h2>
+        <button class="btn-ghost" id="btn-clear-events">Clear</button>
+      </div>
+      <div class="event-stream" id="event-stream"></div>
+    </section>
+
+    <!-- Workspace -->
+    <section class="panel" id="panel-workspace">
+      <div class="panel-header">
+        <h2>Shared Workspace</h2>
+        <button class="btn-ghost" id="btn-refresh-ws">Refresh</button>
+      </div>
+      <div class="file-grid" id="file-grid"></div>
+    </section>
+
+    <!-- Commands -->
+    <section class="panel" id="panel-commands">
+      <div class="panel-header"><h2>Command Bus</h2></div>
+      <form class="command-form" id="command-form">
+        <div class="form-row">
+          <select id="cmd-issuer" class="form-select">
+            <option value="antigravity">Antigravity →</option>
+            <option value="zo">Zo →</option>
+          </select>
+          <select id="cmd-target" class="form-select">
+            <option value="zo">→ Zo</option>
+            <option value="antigravity">→ Antigravity</option>
+          </select>
+          <select id="cmd-name" class="form-select">
+            <option value="ping">ping</option>
+            <option value="sync_now">sync_now</option>
+            <option value="push_resource">push_resource</option>
+            <option value="pull_resource">pull_resource</option>
+            <option value="toggle_feature">toggle_feature</option>
+            <option value="load_extension">load_extension</option>
+            <option value="send_message">send_message</option>
+            <option value="shell">shell</option>
+            <option value="restart_sync">restart_sync</option>
+          </select>
+          <button type="submit" class="btn-primary">Issue</button>
+        </div>
+        <textarea id="cmd-args" class="form-textarea" placeholder='{"key": "value"} (optional args)' rows="2"></textarea>
+      </form>
+      <div class="command-log" id="command-log"></div>
+    </section>
+
+    <!-- Features -->
+    <section class="panel" id="panel-features">
+      <div class="panel-header"><h2>Feature Flags</h2></div>
+      <div class="flag-grid" id="flag-grid"></div>
+    </section>
+
+    <!-- Secrets -->
+    <section class="panel" id="panel-secrets">
+      <div class="panel-header"><h2>Secrets Vault</h2></div>
+      <form class="secret-form" id="secret-form">
+        <div class="form-row">
+          <input class="form-input" id="sec-name" placeholder="Secret name" />
+          <input class="form-input" id="sec-value" placeholder="Value" type="password" />
+          <select id="sec-vis" class="form-select">
+            <option value="shared">Shared</option>
+            <option value="zo">Zo only</option>
+            <option value="antigravity">Antigravity only</option>
+          </select>
+          <button type="submit" class="btn-primary">Store</button>
+        </div>
+      </form>
+      <div class="secret-list" id="secret-list"></div>
+    </section>
+
+    <!-- Extensions -->
+    <section class="panel" id="panel-extensions">
+      <div class="panel-header"><h2>Extensions</h2></div>
+      <div class="ext-grid" id="ext-grid"></div>
+    </section>
+
+    <!-- Messages -->
+    <section class="panel" id="panel-messages">
+      <div class="panel-header"><h2>Message Queue</h2></div>
+      <form class="message-form" id="message-form">
+        <div class="form-row">
+          <select id="msg-from" class="form-select">
+            <option value="antigravity">From: Antigravity</option>
+            <option value="zo">From: Zo</option>
+          </select>
+          <select id="msg-to" class="form-select">
+            <option value="zo">To: Zo</option>
+            <option value="antigravity">To: Antigravity</option>
+          </select>
+          <input class="form-input" id="msg-topic" placeholder="Topic" />
+          <button type="submit" class="btn-primary">Send</button>
+        </div>
+        <textarea id="msg-body" class="form-textarea" placeholder="Message body…" rows="2"></textarea>
+      </form>
+      <div class="message-list" id="message-list"></div>
+    </section>
+
+    <!-- Actions Log -->
+    <section class="panel" id="panel-actionslog">
+      <div class="panel-header">
+        <h2>Shared Actions Log</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="alog-filter-agent" class="form-select" style="flex:0 0 auto;width:140px">
+            <option value="">All agents</option>
+            <option value="antigravity">Antigravity</option>
+            <option value="zo">Zo</option>
+            <option value="system">System</option>
+            <option value="dashboard">Dashboard</option>
+          </select>
+          <select id="alog-filter-cat" class="form-select" style="flex:0 0 auto;width:140px">
+            <option value="">All categories</option>
+            <option value="resource">resource</option>
+            <option value="secret">secret</option>
+            <option value="feature">feature</option>
+            <option value="command">command</option>
+            <option value="message">message</option>
+            <option value="extension">extension</option>
+            <option value="session">session</option>
+            <option value="system">system</option>
+          </select>
+          <button class="btn-ghost" id="btn-refresh-alog">Refresh</button>
+          <button class="btn-ghost" id="btn-clear-alog" style="color:var(--danger)">Clear</button>
+        </div>
+      </div>
+      <div class="alog-stream" id="alog-stream"></div>
+    </section>
+
+    <!-- Zo Cockpit -->
+    <section class="panel" id="panel-zo">
+      <div class="panel-header"><h2>Zo.Computer Cockpit</h2></div>
+      <div class="cockpit-grid">
+        <div class="cockpit-card">
+          <h3>Inbox</h3>
+          <div id="zo-inbox" class="scroll-list"></div>
+        </div>
+        <div class="cockpit-card">
+          <h3>Zo Secrets</h3>
+          <div id="zo-secrets" class="scroll-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Antigravity Cockpit -->
+    <section class="panel" id="panel-ag">
+      <div class="panel-header"><h2>Antigravity IDE Cockpit</h2></div>
+      <div class="cockpit-grid">
+        <div class="cockpit-card">
+          <h3>Open Editor Tabs</h3>
+          <div id="ag-tabs" class="scroll-list"></div>
+        </div>
+        <div class="cockpit-card">
+          <h3>Active Terminals</h3>
+          <div id="ag-terminals" class="scroll-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AgenticBusinessEmpire Cockpit -->
+    <section class="panel active" id="panel-ao">
+      <div class="panel-header"><h2>AgenticBusinessEmpire War Room</h2></div>
+      <div class="cockpit-grid">
+        <div class="cockpit-card">
+          <h3>Workforce Distribution</h3>
+          <div id="ao-workforce" class="scroll-list"></div>
+        </div>
+        <div class="cockpit-card">
+          <h3>Global Objective</h3>
+          <div id="ao-objective" class="stat-value">Finalizing Mesh UI...</div>
+          <div id="ao-progress" class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="./js/app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "task_id": "TCO-2002",
+  "tenant": "subsidiary_beta",
+  "priority": 1,
+  "payload": {
+    "action": "echo",
+    "description": "Wire Irrig8 sensor ingest pipeline. Implement TCO action handler 'ingest_sensor_reading' in inference_node.py. Handler should validate a SoilSample, write to tenants/irrig8/sensor_data/<hub_id>/<timestamp>.json, and trigger a Worksheet regeneration via WorksheetServer.",
+    "deliverables": [
+      "AgenticBusinessEmpire/kernel/inference_node.py (add ingest_sensor_reading handler)",
+      "AgenticBusinessEmpire/tenants/irrig8/logic/ingest.py"
+    ],
+    "active_sensor_count_target": 1,
+    "constraints": [
+      "handler must complete within 100ms",
+      "worksheet OTA must be triggered atomically"
+    ]
+  },
+  "created_at": "2026-03-21T08:01:14Z",
+  "tags": [
+    "irrig8",
+    "sensor",
+    "ingest",
+    "worksheet"
+  ],
+  "deadline_at": null,
+  "assigned_agent": "kernel",
+  "started_at": "2026-03-21T08:52:53.820468+00:00",
+  "completed_at": "2026-03-21T08:52:53.820508+00:00",
+  "result": {
+    "status": "ok",
+    "echo": {
+      "action": "echo",
+      "description": "Wire Irrig8 sensor ingest pipeline. Implement TCO action handler 'ingest_sensor_reading' in inference_node.py. Handler should validate a SoilSample, write to tenants/irrig8/sensor_data/<hub_id>/<timestamp>.json, and trigger a Worksheet regeneration via WorksheetServer.",
+      "deliverables": [
+        "AgenticBusinessEmpire/kernel/inference_node.py (add ingest_sensor_reading handler)",
+        "AgenticBusinessEmpire/tenants/irrig8/logic/ingest.py"
+      ],
+      "active_sensor_count_target": 1,
+      "constraints": [
+        "handler must complete within 100ms",
+        "worksheet OTA must be triggered atomically"
+      ]
+    },
+    "_elapsed_ms": 0.004
+  },
+  "error": null
+}

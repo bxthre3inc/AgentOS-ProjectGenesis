@@ -1,0 +1,35 @@
+"""
+test_a2a.py — Verification for Starting5 A2A Messaging
+"""
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.append(str(root))
+
+import asyncio
+from AgenticBusinessEmpire.tenants.starting5.src.roster_controller import create_default_bus
+
+async def test_a2a_flow():
+    print("Testing Starting5 A2A Messaging...")
+    bus, pg, c, sg, sf, pf = create_default_bus()
+    
+    goal = "Calculate ROI for 5000 acres of corn."
+    print(f"Dispatching goal: {goal}")
+    replies = await pg.dispatch(goal)
+    
+    assert len(replies) > 0, "No replies received from A2A message bus!"
+    
+    for r in replies:
+        summary = r.payload.get("summary")
+        print(f"Reply from {r.from_pos}: {summary}")
+        assert summary is not None, f"Empty summary from {r.from_pos}!"
+        if r.from_pos == "C":
+            assert r.payload.get("isolation_enforced") == True
+            print("✓ Financial isolation verified")
+            
+    print("✓ A2A flow test passed")
+
+if __name__ == "__main__":
+    asyncio.run(test_a2a_flow())

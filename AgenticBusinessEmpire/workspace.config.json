@@ -1,0 +1,68 @@
+{
+  "workspace": {
+    "name": "Zo, Antigravity & AgenticBusinessEmpire 3-Way MCP Mesh",
+    "version": "2.0.0",
+    "created": "2026-03-23T22:52:25Z",
+    "mode": "symmetric_peer_mesh"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 7878,
+    "ws_port": 7879,
+    "dashboard_port": 7880,
+    "antigravity_ide_port": 7881,
+    "log_level": "info"
+  },
+  "agents": {
+    "antigravity": {
+      "id": "antigravity",
+      "display_name": "Antigravity",
+      "color": "#7C3AED",
+      "mcp_client": "gemini-cli",
+      "outward_mcp_port": 7881,
+      "capabilities": ["read", "write", "execute", "admin", "ide_server"]
+    },
+    "zo": {
+      "id": "zo",
+      "display_name": "Zo",
+      "color": "#06B6D4",
+      "mcp_client": "zo.computer",
+      "plan": "basic",
+      "capabilities": ["read", "write", "execute"]
+    },
+    "agenticbusinessempire": {
+      "id": "agenticbusinessempire",
+      "display_name": "AgenticBusinessEmpire",
+      "color": "#10b981",
+      "mcp_client": "agenticbusinessempire-server",
+      "outward_mcp_url": "http://localhost:8080/mcp",
+      "capabilities": ["read", "write", "execute", "invoke_agents", "query_memory", "war_room"]
+    }
+  },
+  "mesh": {
+    "topology": "full_mesh",
+    "peers_can_call_peers": true,
+    "require_peer_registration": false,
+    "heartbeat_interval_s": 30
+  },
+  "sync": {
+    "auto_sync": true,
+    "sync_interval_ms": 500,
+    "watch_paths": ["shared", "agents"],
+    "ignore_patterns": ["*.tmp", ".DS_Store", "__pycache__", "*.pyc", ".vault/*"]
+  },
+  "security": {
+    "encryption_algorithm": "AES-256-GCM",
+    "token_expiry_hours": 24,
+    "require_auth": false,
+    "allowed_origins": ["*"]
+  },
+  "features": {
+    "bidirectional_sync": true,
+    "secrets_vault": true,
+    "command_bus": true,
+    "extensions_manager": true,
+    "live_dashboard": true,
+    "message_queue": true
+  }
+}

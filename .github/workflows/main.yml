@@ -1,4 +1,4 @@
-name: AgentOS Pipeline
+name: AgenticBusinessEmpire Pipeline
 
 on:
   push:
@@ -27,17 +27,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r AgentOS/requirements.txt
+          pip install -r AgenticBusinessEmpire/requirements.txt
           pip install fastapi uvicorn aiosqlite httpx psutil
 
       - name: Run Core Tests
         run: |
           export PYTHONPATH=$PYTHONPATH:.
-          python AgentOS/kernel/tests/benchmark_rqe.py
-          python AgentOS/tenants/starting5/tests/test_a2a.py
-          python AgentOS/tenants/generic_template/tests/test_generic.py
-          python AgentOS/tests/test_corp_agents.py
-          python AgentOS/tests/test_rogue_isolation.py
+          python AgenticBusinessEmpire/kernel/tests/benchmark_rqe.py
+          python AgenticBusinessEmpire/tenants/starting5/tests/test_a2a.py
+          python AgenticBusinessEmpire/tenants/generic_template/tests/test_generic.py
+          python AgenticBusinessEmpire/tests/test_corp_agents.py
+          python AgenticBusinessEmpire/tests/test_rogue_isolation.py
 
   # ---------------------------------------------------------------------------
   # Job 2: Build Native Apps (Linux & Android)
@@ -81,7 +81,7 @@ jobs:
       # --- Unified Build ---
       - name: Build Dashboard & Package
         run: |
-          cd AgentOS/native_app
+          cd AgenticBusinessEmpire/native_app
           npm install
           npm run build
           if [ "${{ matrix.platform }}" == "android" ]; then
@@ -96,10 +96,10 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: agentos-${{ matrix.platform }}-build
+          name: agenticbusinessempire-${{ matrix.platform }}-build
           path: |
-            AgentOS/native_app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
-            AgentOS/native_app/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            AgenticBusinessEmpire/native_app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            AgenticBusinessEmpire/native_app/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
 
   # ---------------------------------------------------------------------------
   # Job 3: Package Server
@@ -112,11 +112,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create Zo Deployment Bundle
         run: |
-          zip -r agentos-server.zip AgentOS/ -x "AgentOS/native_app/*" "**/node_modules/*" "**/__pycache__/*" ".git/*"
+          zip -r agenticbusinessempire-server.zip AgenticBusinessEmpire/ -x "AgenticBusinessEmpire/native_app/*" "**/node_modules/*" "**/__pycache__/*" ".git/*"
       - uses: actions/upload-artifact@v4
         with:
-          name: agentos-server
-          path: agentos-server.zip
+          name: agenticbusinessempire-server
+          path: agenticbusinessempire-server.zip
 
   # ---------------------------------------------------------------------------
   # Job 4: Deploy Server (Zo)

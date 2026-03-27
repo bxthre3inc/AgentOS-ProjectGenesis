@@ -1,0 +1,21 @@
+{
+  "agent_id": "agenticbusinessempire",
+  "display_name": "AgenticBusinessEmpire",
+  "platform": "agenticbusinessempire-server",
+  "description": "Autonomous multi-agent OS — Workforce, Memory, War Room, Ledger",
+  "mcp": {
+    "server_url": "http://localhost:7878",
+    "transport": "http",
+    "connect_on_start": true,
+    "outward_mcp_url": "http://localhost:8080/mcp"
+  },
+  "workspace_path": "agents/agenticbusinessempire/workspace",
+  "capabilities": ["read", "write", "execute", "invoke_agents", "query_memory", "war_room"],
+  "agents": ["Taylor", "Alex", "Jordan", "Riley", "Morgan"],
+  "extensions": ["code-mirror", "shell-relay", "context-bridge"],
+  "preferences": {
+    "auto_sync": true,
+    "notify_on_command": true,
+    "push_diagnostics": true
+  }
+}

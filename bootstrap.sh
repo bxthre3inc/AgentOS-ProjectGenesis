@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bootstrap.sh — AgentOS Project Genesis
+# bootstrap.sh — AgenticBusinessEmpire Project Genesis
 # Idempotent: safe to re-run at any time.
 # =============================================================================
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/AgentOS"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/AgenticBusinessEmpire"
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-info()  { echo -e "${CYAN}[AgentOS]${NC} $*"; }
+info()  { echo -e "${CYAN}[AgenticBusinessEmpire]${NC} $*"; }
 ok()    { echo -e "${GREEN}  ✓${NC} $*"; }
 
 info "Starting Project Genesis bootstrap..."
@@ -47,13 +47,13 @@ info "── Agents"
 mk "$ROOT/agents"
 
 # ---------------------------------------------------------------------------
-# Tenant Zero — agentos_internal
+# Tenant Zero — agenticbusinessempire_internal
 # ---------------------------------------------------------------------------
 info "── Tenants"
-mk "$ROOT/tenants/agentos_internal/logs"
-mk "$ROOT/tenants/agentos_internal/staging"
-touch "$ROOT/tenants/agentos_internal/logs/.gitkeep"
-touch "$ROOT/tenants/agentos_internal/staging/.gitkeep"
+mk "$ROOT/tenants/agenticbusinessempire_internal/logs"
+mk "$ROOT/tenants/agenticbusinessempire_internal/staging"
+touch "$ROOT/tenants/agenticbusinessempire_internal/logs/.gitkeep"
+touch "$ROOT/tenants/agenticbusinessempire_internal/staging/.gitkeep"
 
 # ---------------------------------------------------------------------------
 # Product Alpha — starting5
@@ -113,5 +113,5 @@ fi
 
 info ""
 info "Next steps:"
-echo "  python3 AgentOS/kernel/kernel_main.py --dry-run"
-echo "  python3 AgentOS/agents/maintenance_agent.py"
+echo "  python3 AgenticBusinessEmpire/kernel/kernel_main.py --dry-run"
+echo "  python3 AgenticBusinessEmpire/agents/maintenance_agent.py"

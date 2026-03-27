@@ -5,17 +5,17 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-# Bootstrap AgentOS Paths
+# Bootstrap AgenticBusinessEmpire Paths
 _ROOT = Path(__file__).parent
 sys.path.insert(0, str(_ROOT))
 
-from AgentOS.kernel import inference_node, voice_service, evolution_engine
-from AgentOS.kernel.skills import workforce_manager, ecosystem_skills
-from AgentOS.core import db, config
-from AgentOS.core.models import TaskContext
+from AgenticBusinessEmpire.kernel import inference_node, voice_service, evolution_engine
+from AgenticBusinessEmpire.kernel.skills import workforce_manager, ecosystem_skills
+from AgenticBusinessEmpire.core import db, config
+from AgenticBusinessEmpire.core.models import TaskContext
 
 async def verify_system_mastery():
-    print("🚀 AgentOS v1.0-GENESIS Mastery Verification\n")
+    print("🚀 AgenticBusinessEmpire v1.0-GENESIS Mastery Verification\n")
     print(f"Timestamp: {datetime.now().isoformat()}")
     print(f"Profile: {'SERVER (24GB)' if config.IS_SERVER else 'DEVICE (4GB)'}")
     print("-" * 50)
@@ -62,7 +62,7 @@ async def verify_system_mastery():
     print(f"✓ Voice Status: {res_v['status']} (Local Endpoint: {config.TTS_ENDPOINT})")
 
     print("\n" + "=" * 50)
-    print("🌟 SYSTEM MASTERY VERIFIED: AgentOS is Production Ready.")
+    print("🌟 SYSTEM MASTERY VERIFIED: AgenticBusinessEmpire is Production Ready.")
     print("=" * 50)
 
 if __name__ == "__main__":

@@ -1,0 +1,51 @@
+{
+  "task_id": "TCO-2003",
+  "tenant": "tenant_zero",
+  "priority": 0,
+  "payload": {
+    "action": "echo",
+    "description": "Stand up PostgreSQL + asyncpg for the Relational Query Engine. Install asyncpg, create the 'agenticbusinessempire' database and role, run db.migrate() to apply DDL, and update TECH_STACK.md to mark relational_qe status as 'operational'. Also update bxthre3_ledger.json readiness scores post-completion.",
+    "deliverables": [
+      "AgenticBusinessEmpire/kernel/db.py (mode switches from STUB to operational)",
+      "AgenticBusinessEmpire/tenants/agenticbusinessempire_internal/evolution/TECH_STACK.md (updated)",
+      "AgenticBusinessEmpire/tenants/agenticbusinessempire_internal/bxthre3_ledger.json (tenant_zero readiness_score \u2192 90)"
+    ],
+    "commands": [
+      "pip install asyncpg python-dotenv",
+      "sudo -u postgres createuser -s agenticbusinessempire || true",
+      "sudo -u postgres createdb -O agenticbusinessempire agenticbusinessempire || true",
+      "python3 -c \"import asyncio; from AgenticBusinessEmpire.kernel import db; asyncio.run(db.init_pool()); asyncio.run(db.migrate())\""
+    ]
+  },
+  "created_at": "2026-03-21T08:01:14Z",
+  "tags": [
+    "tenant_zero",
+    "postgres",
+    "db",
+    "migration"
+  ],
+  "deadline_at": null,
+  "assigned_agent": "maintenance_agent",
+  "started_at": "2026-03-21T08:52:53.822499+00:00",
+  "completed_at": "2026-03-21T08:52:53.822530+00:00",
+  "result": {
+    "status": "ok",
+    "echo": {
+      "action": "echo",
+      "description": "Stand up PostgreSQL + asyncpg for the Relational Query Engine. Install asyncpg, create the 'agenticbusinessempire' database and role, run db.migrate() to apply DDL, and update TECH_STACK.md to mark relational_qe status as 'operational'. Also update bxthre3_ledger.json readiness scores post-completion.",
+      "deliverables": [
+        "AgenticBusinessEmpire/kernel/db.py (mode switches from STUB to operational)",
+        "AgenticBusinessEmpire/tenants/agenticbusinessempire_internal/evolution/TECH_STACK.md (updated)",
+        "AgenticBusinessEmpire/tenants/agenticbusinessempire_internal/bxthre3_ledger.json (tenant_zero readiness_score \u2192 90)"
+      ],
+      "commands": [
+        "pip install asyncpg python-dotenv",
+        "sudo -u postgres createuser -s agenticbusinessempire || true",
+        "sudo -u postgres createdb -O agenticbusinessempire agenticbusinessempire || true",
+        "python3 -c \"import asyncio; from AgenticBusinessEmpire.kernel import db; asyncio.run(db.init_pool()); asyncio.run(db.migrate())\""
+      ]
+    },
+    "_elapsed_ms": 0.002
+  },
+  "error": null
+}
