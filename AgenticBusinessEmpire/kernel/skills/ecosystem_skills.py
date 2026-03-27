@@ -131,3 +131,15 @@ async def handle_voice_call(task: TaskContext) -> dict:
     # In production, we'd make the actual request here
     # return await IntegrationBase("signalwire")._request("POST", sw_url, auth=auth, data=data)
     return {"status": "success", "service": "SignalWire", "to": to, "msg": "Call queued"}
+
+@registry.register("listen")
+async def handle_stt(task: TaskContext) -> dict:
+    """Convert audio input to text."""
+    audio_path = task.payload.get("audio_path")
+    if not audio_path or not os.path.exists(audio_path):
+        return {"status": "error", "message": "audio_path required and must exist"}
+    
+    with open(audio_path, "rb") as f:
+        audio_data = f.read()
+    
+    return await voice_service.listen(audio_data)

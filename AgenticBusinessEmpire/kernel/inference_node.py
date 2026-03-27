@@ -38,6 +38,7 @@ import AgenticBusinessEmpire.logic.strategy as strategy
 import AgenticBusinessEmpire.logic.corporate as corporate
 import AgenticBusinessEmpire.logic.evaluation as evaluation
 import AgenticBusinessEmpire.kernel.skills.ecosystem_skills as ecosystem_skills
+from AgenticBusinessEmpire.kernel.skills import workforce_manager
 
 import re
 import os
@@ -217,6 +218,20 @@ async def process(task: TaskContext | dict) -> dict:
                     "strategy": "multimodal_offload" if should_strategic_offload else "load_shedding"
                 }
     
+    # --- Autonomous Workforce Delegation Phase ---
+    # If no specific employee is assigned, let the workforce manager find one.
+    if not task.payload.get("employee_id") and not task.payload.get("_delegated"):
+        delegation_res = await workforce_manager.auto_delegate_task(task.to_dict())
+        if delegation_res.get("status") == "delegated":
+            # Find the agent we just matched to get their role
+            roster = await workforce_manager.list_roster(task.tenant)
+            agent = next((a for a in roster if a["employee_id"] == delegation_res["employee_id"]), None)
+            if agent:
+                task.payload["employee_id"] = agent["employee_id"]
+                task.payload["role"] = agent.get("role", "default")
+                logger.info("[Inference Node] Auto-delegated task %s to agent %s (%s)", 
+                            task.task_id, agent["employee_id"], agent["role"])
+
     action = task.payload.get("action")
     
     # Enable Natural Language inference if no hardcoded action is provided

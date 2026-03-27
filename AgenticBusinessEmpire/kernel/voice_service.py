@@ -28,7 +28,7 @@ class VoiceService:
         async with httpx.AsyncClient() as client:
             try:
                 # Piper or Coqui local server request
-                resp = await client.post(self.stt_url, json={"text": text, "engine": self.engine})
+                resp = await client.post(self.tts_url, json={"text": text, "engine": self.engine})
                 if resp.status_code == 200:
                     with open(output_path, "wb") as f:
                         f.write(resp.content)

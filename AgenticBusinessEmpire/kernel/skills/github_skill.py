@@ -37,21 +37,38 @@ class GitHubSkill:
 
     async def review_pr(self, repo: str, pr_number: int) -> Dict[str, Any]:
         """Review a PR by summarizing changes using AI logic."""
+        # 1. Fetch PR metadata
         pr_data = await self._request("GET", f"/repos/{repo}/pulls/{pr_number}")
-        diff_url = pr_data.get("diff_url")
         
-        # In a real scenario, we'd fetch the diff and feed it to inference_node
-        summary = await inference_node.process({
-            "task_id": f"GH-REVIEW-{pr_number}",
+        # 2. Fetch the actual diff
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self.base_url}/repos/{repo}/pulls/{pr_number}",
+                headers={**self.headers, "Accept": "application/vnd.github.v3.diff"},
+                timeout=30.0
+            )
+            resp.raise_for_status()
+            diff_content = resp.text
+            
+        # 3. Feed the diff to inference_node for real review
+        # We truncate diff if it's too large for the context
+        max_diff_len = 15000 
+        truncated_diff = diff_content[:max_diff_len] + ("\n... [TRUNCATED]" if len(diff_content) > max_diff_len else "")
+        
+        review_result = await inference_node.process({
+            "task_id": f"GH-REVIEW-{repo.replace('/', '_')}-{pr_number}",
+            "tenant": "tenant_zero",
             "payload": {
-                "action": "summarize_pr",
+                "action": "github_summarize_pr",
                 "repo": repo,
                 "pr_number": pr_number,
-                "title": pr_data.get("title")
+                "title": pr_data.get("title"),
+                "diff": truncated_diff,
+                "role": "engineer" 
             }
         })
         
-        return {"status": "reviewed", "summary": summary}
+        return {"status": "reviewed", "repo": repo, "pr": pr_number, "analysis": review_result}
 
     async def list_issues(self, repo: str) -> List[Dict[str, Any]]:
         """List open issues for a repository."""
@@ -95,5 +112,24 @@ async def handle_github(task: TaskContext) -> dict:
         if not repo: return {"error": "repo required"}
         data = await github_skill.list_issues(repo)
         return {"status": "success", "issues": data}
+
+@registry.register("github_summarize_pr")
+async def handle_summarize_pr(task: TaskContext) -> dict:
+    """Uses LLM to summarize a GitHub PR diff."""
+    diff = task.payload.get("diff", "")
+    title = task.payload.get("title", "Untitled PR")
+    
+    prompt = f"""
+Analyze the following GitHub Pull Request and provide a concise technical summary of changes.
+Identify any potential bugs, security concerns, or architectural regressions.
+
+PR Title: {title}
+
+### DIFF CONTENT:
+{diff}
+"""
+    # Trigger LLM inference via the task prompt
+    task.payload["prompt"] = prompt
+    return await inference_node.infer_intent(task)
 
 
